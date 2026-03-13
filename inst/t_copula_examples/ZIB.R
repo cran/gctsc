@@ -55,6 +55,7 @@ pi0  <- 0.2           # Zero-inflation probability
 phi  <- 0.8           # AR(1) parameter
 tau  <- c(phi)
 arma_order <- c(1, 0)
+df <- 10
 
 ## --- Simulate ZIB count time series ---
 set.seed(1)
@@ -64,11 +65,34 @@ sim_data <- sim_zib(
   size       = size,
   tau        = tau,
   arma_order = arma_order,
+  family     = "t", 
+  df         = 10,
   nsim       = n
 )
 y <- sim_data$y
 
-## --- Fit Gaussian copula ZIB model using TMET ---
+
+
+X <- list(mu = matrix(1, nrow = n), pi0 = matrix(1, nrow = n))
+
+## --- Compute truncation bounds ---
+lambda <- c(qlogis(prob), qlogis(pi0))
+
+marg <- zib.marg(link = "logit", size= size)
+ab <- marg$bounds(y, X, lambda, family ="t", df= df)
+
+## --- Likelihood approximation ---
+llk_tmet <- pmvt_tmet(lower = ab[,1], upper = ab[,2],
+                      tau = tau, od = arma_order, 
+                      pm = 30, QMC = TRUE, df= df)
+
+llk_ghk  <- pmvt_ghk( lower = ab[,1], upper = ab[,2],
+                      tau = tau, od = arma_order,
+                      QMC = TRUE, df= df)
+
+c(TMET = llk_tmet, GHK = llk_ghk)
+
+## --- Fit t copula ZIB model using TMET ---
 fit_zib <- gctsc(
   formula  = list(
     mu  = y ~ 1,   # logit(prob(t)) = β_0
@@ -76,7 +100,7 @@ fit_zib <- gctsc(
   ),
   marginal = zib.marg(link = "logit", size = size),
   cormat   = arma.cormat(p = 1, q = 0),
-  method   = "TMET",
+  method   = "GHK", family = "t", df= 10,
   options  = gctsc.opts(seed = 1, M = 1000)
 )
 
@@ -100,13 +124,13 @@ library(gctsc)
 ##
 ## This allows π0(t) to vary seasonally through covariates.
 
-n    <- 500
+n    <- 2000
 size <- 24
 prob <- 0.2
 phi  <- 0.8
 tau  <- c(phi)
 arma_order <- c(1, 0)
-
+df <- 10
 ## --- Construct seasonal covariates for π0(t) ---
 day_of_year <- rep(1:365, length.out = n)
 season <- factor(ifelse(day_of_year < 100, "Winter",
@@ -128,23 +152,44 @@ sim_data <- sim_zib(
   pi0        = pi0,
   size       = size,
   tau        = tau,
-  arma_order = arma_order,
+  arma_order = arma_order, family = "t", df= 10,
   nsim       = n
 )
 y <- sim_data$y
 
-df <- data.frame(y = y, X_pi)
+dta <- data.frame(y = y, X_pi)
 
-## --- Fit Gaussian copula ZIB model (TMET) ---
+
+X <- list(mu =  matrix(1, nrow = n), pi0 = X_pi)
+
+## --- Compute truncation bounds ---
+lambda <- c(qlogis(prob), beta_pi)
+
+marg <- zib.marg(link = "logit", size= size)
+ab <- marg$bounds(y, X, lambda, family ="t", df= df)
+
+## --- Likelihood approximation ---
+llk_tmet <- pmvt_tmet(lower = ab[,1], upper = ab[,2],
+                      tau = tau, od = arma_order, 
+                      pm = 30, QMC = TRUE, df= df)
+
+llk_ghk  <- pmvt_ghk( lower = ab[,1], upper = ab[,2],
+                      tau = tau, od = arma_order,
+                      QMC = TRUE, df= df)
+
+c(TMET = llk_tmet, GHK = llk_ghk)
+
+
+## --- Fit t copula ZIB model (TMET) ---
 fit_zib_cov <- gctsc(
   formula  = list(
     mu  = y ~ 1,
     pi0 = ~ seasonSpring + seasonSummer + seasonWinter
   ),
-  data     = df,
+  data     = dta,
   marginal = zib.marg(link = "logit", size = size),
   cormat   = arma.cormat(p = 1, q = 0),
-  method   = "GHK",
+  method   = "TMET", family = "t", df= 10,
   options  = gctsc.opts(seed = 1, M = 1000)
 )
 

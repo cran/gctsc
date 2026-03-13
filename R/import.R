@@ -10,6 +10,13 @@
 #' @importFrom utils data
 #' @importFrom stats arima printCoefmat
 #' @importFrom stats quasibinomial setNames
+#' @importFrom stats qqnorm qqline
 #' @importFrom utils tail
+
 utils::globalVariables(c("lw", "n"))
+NULL
+
+#' @importFrom stats arima.sim ppoints pt qt rchisq
+#' @importFrom graphics plot.new
+#' @importFrom stats qqnorm qqline
 NULL

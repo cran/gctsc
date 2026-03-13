@@ -2,40 +2,93 @@
 % Please edit documentation in R/prediction.R
 \name{predict.gctsc}
 \alias{predict.gctsc}
-\alias{predict}
-\title{Predictive Distribution and Scoring for Gaussian Copula Time Series Models}
+\title{One-Step-Ahead Predictive Distribution for Copula Count Time Series Models}
 \usage{
-\method{predict}{gctsc}(object, ..., method = "GHK",
-                        y_obs = NULL, X_test = NULL)
+\method{predict}{gctsc}(object, y_obs = NULL, X_test = NULL, ...)
 }
 \arguments{
-\item{object}{A fitted model object of class \code{gctsc}.}
+\item{object}{A fitted model object of class \code{"gctsc"},
+as returned by \code{\link{gctsc}}.}
 
-\item{...}{Not used. Included for S3 method consistency.}
+\item{y_obs}{Optional non-negative integer giving the observed value
+at the prediction time. If supplied, the Continuous Ranked Probability
+Score (CRPS) and Logarithmic Score (LOGS) are computed.}
 
-\item{method}{Character string specifying the prediction method:
-\code{"TMET"} or \code{"GHK"} (default: \code{"GHK"}).}
+\item{X_test}{Covariate values at the prediction time point.
+Can be provided as:
+\itemize{
+\item a named numeric vector whose names match the covariates
+used during model fitting, or
+\item a one-row \code{data.frame} or matrix with matching column names.
+}
+If the fitted model is intercept-only, \code{X_test} may be omitted,
+in which case the intercept is set to 1 automatically.
+An error is raised if more than one row is supplied.}
 
-\item{y_obs}{Optional observed value used to compute CRPS and LOGS.}
-
-\item{X_test}{Optional covariate information for prediction. Can be a named
-numeric vector, or a 1-row matrix/data.frame with column names matching the
-model covariates.}
+\item{...}{Ignored. Included for S3 method compatibility.}
 }
 \value{
-\item{mean}{Predictive mean of \eqn{Y_{t+1}}.}
-\item{median}{Predictive median of \eqn{Y_{t+1}}.}
-\item{mode}{Predictive mode of \eqn{Y_{t+1}}.}
-\item{variance}{Predictive variance of \eqn{Y_{t+1}}.}
-\item{CRPS}{Continuous Ranked Probability Score (if \code{y_obs} is provided).}
-\item{LOGS}{Logarithmic score (if \code{y_obs} is provided).}
-\item{p_y}{Predictive pmf over \eqn{(0,\dots,y_{\max})}.}
-\item{lower, upper}{ 95\eqn{\%} predictive interval bounds.}
+A list containing:
+\itemize{
+\item \code{mean}: Predictive mean.
+\item \code{median}: Predictive median.
+\item \code{mode}: Predictive mode.
+\item \code{variance}: Predictive variance.
+\item \code{p_y}: Predictive probability mass function over
+\code{0:y_max}.
+\item \code{lower}, \code{upper}: Bounds of the 95\\% predictive interval.
+\item \code{CRPS}: Continuous Ranked Probability Score
+(if \code{y_obs} is provided).
+\item \code{LOGS}: Logarithmic Score
+(if \code{y_obs} is provided).
+}
 }
 \description{
-Computes the one-step-ahead predictive distribution for a fitted Gaussian copula
-time series model, including summary statistics (mean, median, mode, variance)
-and optional scoring rules (CRPS and LOGS) if an observed value is supplied.
+Computes the one-step-ahead predictive distribution for a fitted
+Gaussian or Student--t copula count time series model.
+
+The predictive probability mass function is evaluated using the
+estimation method stored in the fitted object (TMET or GHK).
+Summary statistics of the predictive distribution are returned,
+and optional scoring rules are computed if the observed value is supplied.
+}
+\details{
+The predictive distribution integrates over the latent copula
+dependence structure specified in the fitted model. For Gaussian
+copulas, multivariate normal rectangle probabilities are evaluated;
+for Student--t copulas, multivariate t rectangle probabilities are used.
+}
+\examples{
+# Simulate Poisson AR(1) data
+set.seed(1)
+y_sim <- sim_poisson(mu = 10, tau = 0.2,
+                     arma_order = c(1, 0),
+                     nsim = 1000,
+                     family = "gaussian")$y
+
+# Fit Gaussian copula model
+fit <- gctsc(
+  y ~ 1,
+  data = data.frame(y = y_sim),
+  marginal = poisson.marg(lambda.lower = 0),
+  cormat = arma.cormat(p = 1, q = 0),
+  method = "CE",
+  family = "gaussian",
+  options = gctsc.opts(M = 1000, seed = 42)
+)
+
+# One-step-ahead prediction
+predict(fit)
+
+}
+\references{
+Nguyen, Q. N., & De Oliveira, V. (2026). Likelihood Inference in Gaussian Copula Models for Count Time Series
+via Minimax Exponential Tilting
+\emph{Journal of Computational Statistics and Data Analysis}.
+
+Nguyen, Q. N., & De Oliveira, V. (2026).
+Scalable Likelihood Inference for Student--\eqn{t} Copula Count Time Series.
+Manuscript in preparation.
 }
 \seealso{
 \code{\link{gctsc}}, \code{\link{arma.cormat}}

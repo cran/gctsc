@@ -1,13 +1,24 @@
 #' @keywords internal
 #' @noRd
-safe_cdf_bounds <- function(pdf, cdf) {
+get_qfun <- function(family, df) {
+  switch(family,
+         "t" = function(p) qt(p, df),
+         "gaussian" = qnorm,
+         stop("Unknown family in get_qfun.")
+  )
+}
+
+safe_cdf_bounds <- function(pdf, cdf, family, df) {
+
   EPS <- sqrt(.Machine$double.eps)
   EPS1 <- 1 - EPS
   cdf_l <- pmax(EPS, pmin(EPS1, cdf - pdf))
   cdf_u <- pmax(EPS, pmin(EPS1, cdf))
-  cdf_l <- pmin(cdf_l, cdf_u - EPS)
-  list(lower = qnorm(cdf_l), upper = qnorm(cdf_u))
+  cdf_l <- pmin(cdf_l, pmax(0, cdf_u - EPS))
+  qfun <- get_qfun(family, df)
+  list(lower = qfun(cdf_l), upper = qfun(cdf_u))
 }
+
 
 #' @keywords internal
 #' @noRd

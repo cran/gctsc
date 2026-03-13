@@ -5,9 +5,7 @@
 #' @param object An object of class `gctsc`.
 #' @param ... Ignored. Included for S3 method compatibility.
 #'
-#' @return 
-#' A named numeric vector containing the estimated model coefficients, 
-#' including both marginal parameters and copula dependence parameters.
+#' @return A named numeric vector of model coefficients.
 #' @export
 coef.gctsc <- function(object,...) object$coef
 
@@ -21,18 +19,18 @@ coef.gctsc <- function(object,...) object$coef
 #' @param digits Number of significant digits to display.
 #' @param ... Ignored. Included for S3 method compatibility.
 #'
-#' @return 
-#' Returns the object \code{x} invisibly. 
-#' Called for its side effect of printing a formatted summary of the model fit.
-#'
 #' @export
-#' 
 print.gctsc <- function(x, digits = max(3, getOption("digits") - 3), ...) {
-  cat("\n--- Gaussian Copula Count Time Series Model ---\n")
+  cat("\n--- Copula Count Time Series Model ---\n")
+  cat("Copula family:", x$family, "\n")
+  if (!is.null(x$df)) {
+    cat("Degrees of freedom:", x$df, "\n")
+  }
+  cat("Sample size (n):", x$n, "\n")
 
   method_label <- switch(x$method,
                          "TMET" = "TMET: Tilted Importance Sampling",
-                         "GHK"  = "GHK: Truncated Normal Simulator",
+                         "GHK"  = "GHK: Sequential Importance Sampling",
                          "CE"   = "CE: Continuous Extension Approximation",
                          paste("Unknown method:", x$method))
   cat("Estimation method:", method_label, "\n\n")
@@ -89,14 +87,7 @@ print.gctsc <- function(x, digits = max(3, getOption("digits") - 3), ...) {
 #' @param object An object of class `gctsc`.
 #' @param ... Ignored. Included for S3 method compatibility.
 #'
-#' @return 
-#' A list of class \code{"summary.gctsc"} containing:
-#' \item{call}{The model call.}
-#' \item{convergence}{Convergence code from the optimizer.}
-#' \item{coefficients}{A list with two matrices: \code{marginal} and \code{copula}, each containing estimates, standard errors, z-values, and p-values.}
-#' \item{loglik}{Approximate log-likelihood value.}
-#' \item{aic}{Akaike Information Criterion.}
-#' \item{bic}{Bayesian Information Criterion.}
+#' @return A list of class `summary.gctsc` containing model summary statistics.
 #' @export
 summary.gctsc <- function(object, ...) {
   se <- object$se
@@ -156,7 +147,8 @@ summary.gctsc <- function(object, ...) {
     coefficients = list(marginal = marginal_coef, copula = copula_coef),
     loglik = loglik,
     aic = aic,
-    bic = bic
+    bic = bic,
+    maximum = -loglik
   ), class = "summary.gctsc")
 }
 
@@ -168,13 +160,9 @@ summary.gctsc <- function(object, ...) {
 #' @param digits Number of significant digits to display.
 #' @param ... Ignored. Included for S3 method compatibility.
 #'
-#' @return 
-#' Returns the input object \code{x} invisibly. 
-#' Called for its side effect of printing summary information.
-#'
 #' @export
 print.summary.gctsc <- function(x, digits = 4, ...) {
-  cat("\n--- Summary of Gaussian Copula Time Series Model ---\n")
+  cat("\n--- Summary of Copula Time Series Model ---\n")
   cat("Call:\n", deparse(x$call, width.cutoff = floor(getOption("width") * 0.85)), "\n")
 
   if (x$convergence != 0) {

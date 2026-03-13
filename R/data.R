@@ -15,3 +15,12 @@ NULL
 #' @keywords datasets
 #' @name campyl
 NULL
+
+#' Weekly Rotavirus case counts across Germany
+#'
+#' @format A data frame with 1248 rows and 413 variables.
+#' @usage data("rota")
+#' @docType data
+#' @keywords datasets
+#' @name rota
+NULL

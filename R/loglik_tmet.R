@@ -1,268 +1,282 @@
-#' TMET Log-Likelihood Approximation
+#' Approximate Log-Likelihood via TMET
 #'
-#' Computes the approximate log-likelihood for a count time series model using the
-#' \emph{Time Series Minimax Exponential Tilting (TMET)} method. This function uses
-#' the autoregressive movin average structure of the underlying Gaussian copula to compute
-#' multivariate normal rectangle probabilities via adaptive importance sampling
-#' with an optimal tilting parameter.
+#' Computes the approximate log-likelihood for a count time series model
+#' based on a Gaussian and Student --t copula using the
+#' \emph{Time Series Minimax Exponential Tilting (TMET)} method.
 #'
-#' The implementation combines the Innovations Algorithm for exact conditional
-#' mean and variance computation with exponential tilting to estimate
-#' the multivariate normal probability over rectangular truncation sets.
+#' TMET exploits the autoregressive moving-average (ARMA) structure
+#' of the latent Gaussian or Scale mixture normal representation of
+#' Student--t process to evaluate high-dimensional
+#' multivariate normal/t rectangle probabilities via adaptive
+#' importance sampling with an optimal tilting parameter.
 #'
-#' @param lower A numeric vector of lower truncation bounds.
-#' @param upper A numeric vector of upper truncation bounds.
-#' @param tau A numeric vector of ARMA dependence parameters.
+#' The implementation combines the Innovations Algorithm for exact
+#' conditional mean and variance computation with exponential tilting,
+#' resulting in a scalable and variance-efficient likelihood approximation.
+#'
+#' In this package, the latent dependence structure is parameterized
+#' through an ARMA(\eqn{p,q}) process.
+#'
+#' @param lower Numeric vector of length \code{n} giving the lower
+#'   bounds of the transformed latent variables.
+#'
+#' @param upper Numeric vector of length \code{n} giving the upper
+#'   bounds of the transformed latent variables.
+#'
+#' @param tau Numeric vector of ARMA dependence parameters ordered as
+#'   \code{c(phi_1, ..., phi_p, theta_1, ..., theta_q)}, where
+#'   \eqn{\phi_i} are autoregressive (AR) coefficients and
+#'   \eqn{\theta_j} are moving-average (MA) coefficients.
+#'
 #' @param od Integer vector \code{c(p, q)} specifying the AR and MA orders.
-#' @param pm Integer. Number of past lags used for approximating ARMA(p,q) to AR  (required if \code{q > 0}).
-#' @param M Integer. Number of Monte Carlo or QMC samples.
-#' @param QMC Logical. If \code{TRUE}, use quasi-Monte Carlo integration.
-#' @param ret_llk Logical. Default is \code{TRUE} to return log-likelihood; otherwise, return diagnostic output.
 #'
-#' @return If \code{ret_llk = TRUE}, a numeric scalar (log-likelihood); else a list containing diagnostic statistics.
+#' @param M Positive integer specifying the number of Monte Carlo or
+#'   quasi-Monte Carlo samples used in the simulation.
+#'
+#' @param QMC Logical; if \code{TRUE} (default), quasi-Monte Carlo
+#'   integration is used. Otherwise, standard Monte Carlo sampling
+#'   is applied.
+#'
+#' @param ret_llk Logical; if \code{TRUE} (default), returns the approximate
+#' log-likelihood. If \code{FALSE}, internal diagnostic quantities
+#' from the GHK simulator are returned. This option is primarily
+#' intended for internal use and methodological research.
+#'
+#' @param df Degrees of freedom for the t copula. Must be greater than 2.
+#'   Required only for \code{pmvt_ghk()}.
+#' @param pm Integer specifying the number of past lags used when
+#'   approximating an ARMA(\eqn{p,q}) process by an AR representation
+#'   (required if \code{q > 0}).
+#'
+#' @return A numeric scalar giving the approximate log-likelihood.
+#'   If \code{ret_llk = FALSE}, diagnostic output from the TMET
+#'   sampler is returned (primarily for research use).
+#' @seealso \code{\link{pmvn_ghk}}, \code{\link{pmvt_ghk}}
+#' @references
+#' Nguyen, Q. N., & De Oliveira, V. (2026). Likelihood Inference in Gaussian Copula Models for Count Time Series
+#' via Minimax Exponential Tilting
+#' \emph{Journal of Computational Statistics and Data Analysis}.
+#' 
+#' Nguyen, Q. N., & De Oliveira, V. (2026).
+#' Scalable Likelihood Inference for Student--\eqn{t} Copula Count Time Series.
+#' Manuscript in preparation.
 #'
 #' @examples
-#' # Simulate Poisson AR(1) data
-#' sim_data <- sim_poisson(mu =10, tau=0.2, arma_order=c(1,0), nsim = 1000, seed = 1)
-#' mu=10
-#' tau=0.2
-#' arma_order=c(1,0)
-#' sim_data <- sim_poisson(mu =mu, tau=tau, arma_order=arma_order, nsim = 1000, seed = 1)
+#' ## Gaussian copula example
+#' mu <- 10
+#' tau <- 0.2
+#' arma_order <- c(1, 0)
+#'
+#' sim_data <- sim_poisson(mu = mu, tau = tau, arma_order = arma_order,
+#'                         nsim = 1000, seed = 1)
+#'
 #' y <- sim_data$y
+#' a <- qnorm(ppois(y - 1, lambda = mu))
+#' b <- qnorm(ppois(y, lambda = mu))
 #'
-#' # Compute latent bounds for CE method
-#' a <- qnorm(ppois(y - 1, lambda = mu))  # lower bound
-#' b <- qnorm(ppois(y, lambda = mu))      # upper bound
+#' # Approximate log-likelihood using TMET
+#' llk_tmet <- pmvn_tmet(lower = a, upper = b,
+#'                       tau = tau, od = arma_order)
+#' llk_tmet
+#' 
+#' ## Student--t copula example
+#' df <- 8
 #'
-#' # Approximate log-likelihood with CE method
-#' llk_tmet <- pmvn_tmet(lower = a, upper = b, tau = 0.2, od = c(1,0))
-#' print(llk_tmet)
+#' sim_data_t <- sim_poisson(mu = mu, tau = tau, arma_order = arma_order,
+#'                           nsim = 500, family = "t", df = df, seed = 1)
 #'
+#' y_t <- sim_data_t$y
+#' a_t <- qt(ppois(y_t - 1, lambda = mu), df = df)
+#' b_t <- qt(ppois(y_t, lambda = mu), df = df)
+#'
+#' llk_t <- pmvt_tmet(lower = a_t, upper = b_t, tau = tau, od = arma_order,
+#'                   M = 1000, df = df)
+#'                   
+#' @rdname pmv_tmet
 #' @export
-pmvn_tmet <- function(lower, upper, tau, od, pm = 30,M = 1000, QMC = TRUE, ret_llk=TRUE){
-  if (length(tau) != sum(od)) {
-    stop("Length of 'tau' must equal sum of AR and MA orders: length(tau) = ",
-         length(tau), ", expected = ", sum(od), ".")
-  }
-  if (all(od == 0)) {
-    stop("ARMA(0,0) (white noise) is not supported. Please specify at least one AR or MA term.")
-  }
+pmvn_tmet <- function(lower, upper, tau, od,
+                      pm = 30, M = 1000,
+                      QMC = TRUE, ret_llk = TRUE) {
+  
+  tmet_core(lower, upper, tau, od,
+            family = "gaussian",
+            pm = pm, M = M,
+            QMC = QMC,
+            ret_llk = ret_llk)
+}
 
-  n <-length(lower)
+#' @rdname pmv_tmet 
+#' @export
+pmvt_tmet <- function(lower, upper, tau, od,
+                      pm = 30, M = 1000,
+                      QMC = TRUE, ret_llk = TRUE,
+                      df) {
+  
+  tmet_core(lower, upper, tau, od,
+            family = "t",
+            pm = pm, M = M,
+            QMC = QMC,
+            ret_llk = ret_llk,
+            df = df)
+}
+
+#' @keywords internal
+#' @noRd
+loglik_tmet <- function(ab, tau, od,
+                        family,
+                        pm = 30,
+                        M = 1000,
+                        QMC = TRUE,
+                        ret_llk = TRUE,
+                        df = NULL) {
+  
+  if (any(is.na(ab)))
+    return(-1e20)
+  
+  tryCatch(
+    tmet_core(ab[,1], ab[,2], tau, od,
+              family = family,
+              pm = pm,
+              M = M,
+              QMC = QMC,
+              ret_llk = ret_llk,
+              df = df),
+    error = function(e) -1e20
+  )
+}
+
+
+tmet_core <- function(lower, upper, tau, od,
+                      family,
+                      pm = 30,
+                      M = 1000,
+                      QMC = TRUE,
+                      ret_llk = TRUE,
+                      df = NULL) {
+  
+  if (length(tau) != sum(od))
+    stop("Length of 'tau' must equal p+q.")
+  
+  if (all(od == 0))
+    stop("ARMA(0,0) not supported.")
+  
+  if (any(upper < lower))
+    stop("Invalid bounds: upper < lower.")
+  
+  n <- length(lower)
   p <- od[1]
   q <- od[2]
-
+  
   pm <- if (q == 0) p else pm
-  if (any(upper < lower)) {
-    stop("Invalid MVN probability: some upper bounds < lower bounds at index ",
-         which(upper < lower)[1])
+  NN <- build_NN(n, pm)
+  
+  tmet_obj <- cond_mv_tmet(NN, tau, od)
+  
+  if (family == "gaussian") {
+    
+    # ----- Gaussian tilting solve -----
+    z0 <- truncnorm::etruncnorm(lower, upper)
+    z0_delta0 <- c(z0, rep(0, n))
+
+    
+    solv_delta <- stats::optim(
+      z0_delta0,
+      fn = function(x, ...) {
+        ret <- grad_jacprod(x, ..., retProd = FALSE)
+        0.5 * sum(ret$grad^2)
+      },
+      gr = function(x, ...) {
+        ret <- grad_jacprod(x, ..., retProd = TRUE)
+        ret$jac_grad
+      },
+      method = "L-BFGS-B",
+      Condmv_Obj = tmet_obj,
+      a = lower, b = upper,
+      lower = c(lower, rep(-Inf, n)),
+      upper = c(upper, rep(Inf, n)),
+      control = list(maxit = 100000)
+    )
+    
+    delta <- solv_delta$par[(n + 1):(2 * n)]
+    
+    exp_psi <- sample_mvn(
+      tmet_obj, lower, upper,
+      delta = delta,
+      M = M, QMC = QMC,
+      ret_llk = ret_llk,
+      method = "TMET"
+    )
+    
+    if (ret_llk) {
+      exponent <- exp_psi[[2]]
+      return(exponent + log(exp_psi[[1]]))
+    } else {
+      return(exp_psi$summary_stats)
+    }
+    
+  } else {
+    
+    # ----- Student-t tilting solve -----
+    trunc_expect <- truncnorm::etruncnorm(lower, upper)
+    z0 <- c(trunc_expect, rep(0, n))
+    z0[2 * n] <- 0
+    z0[n] <- 1
+    
+    
+    sol <- lm_sparse_solver(
+      z0,
+      Condmv_Obj = tmet_obj,
+      a = lower, b = upper,
+      nu = df,
+      maxit = 500,
+      tol = 1e-1,
+      verbose = FALSE
+    )
+    
+    z <- sol$x
+    delta <- z[(n + 1):(2 * n)]
+    eta <- delta[n]
+    
+    const <- log(2*pi)/2 - lgamma(df/2) -
+      (df/2 - 1)*log(2) +
+      TruncatedNormal::lnNpr(-eta, Inf) +
+      0.5 * eta^2
+    
+    exp_psiT <- sample_mvt(
+      tmet_obj, lower, upper,
+      delta = delta,
+      M = M, QMC = QMC,
+      ret_llk = ret_llk,
+      df = df,
+      method = "TMET"
+    )
+    
+    if (ret_llk) {
+      exponent <- exp_psiT[[2]]
+      log_est_prob <- exponent +log(mean(exp_psiT[[1]] * exp(exp_psiT[[2]] - exponent))) + const
+      
+      return(log_est_prob)
+    } else {
+      return(exp_psiT$summary_stats)
+    }
   }
+}
 
 
-  ## NNarray: causal lag indices  --------------------------------
-
+build_NN <- function(n, pm) {
   NN <- matrix(NA_integer_, nrow = n, ncol = pm + 1)
   NN[1, 1] <- 1
-
-  row_idx <- 2:n
-  col_idx <- 0:pm
-
-  # Create a matrix of row indices and subtract column offsets
-  idx_mat <- outer(row_idx - 1, col_idx, FUN = function(i, j) i - j)
-
-  # Mask values where j > i (i.e., invalid entries)
-  valid_mask <- outer(row_idx - 1, col_idx, FUN = function(i, j) j <= i)
-  idx_mat[!valid_mask] <- NA_integer_
-
-  NN[2:n, ] <- idx_mat +1
-
-
-  # compute conditional variance and BLUP coefficient mt B
-  tmet_obj <- cond_mv_tmet(NN,tau,od)
-
-
-  # find tilting parameter delta -----------------------------------
-  z0 <- truncnorm::etruncnorm(lower, upper)
-  z0_delta0 <- c(z0, rep(0, n))
-
-  solv_delta <- stats::optim(
-    z0_delta0,
-    fn = function(x, ...) {
-      ret <- grad_jacprod(x, ...,retProd = FALSE)
-      0.5*sum((ret$grad)^2)
-    },
-    gr = function(x, ...) {
-      ret <- grad_jacprod(x, ..., retProd = TRUE)
-      ret$jac_grad
-    },
-    method = "L-BFGS-B",
-    Condmv_Obj = tmet_obj,
-    a = lower, b = upper,
-    lower = c(lower, rep(-Inf, n)), upper = c(upper, rep(Inf, n)),
-    control = list(maxit = 500)
-  )
-
-  if (any(solv_delta$par[1:n] < lower) ||
-      any(solv_delta$par[1:n] > upper)) {
-    warning("Optimal x is outside the integration region during minmax tilting\n")
+  
+  if (n > 1) {
+    row_idx <- 2:n
+    col_idx <- 0:pm
+    
+    idx_mat <- outer(row_idx - 1, col_idx, FUN = function(i, j) i - j)
+    valid_mask <- outer(row_idx - 1, col_idx, FUN = function(i, j) j <= i)
+    idx_mat[!valid_mask] <- NA_integer_
+    
+    NN[2:n, ] <- idx_mat + 1
   }
-
-  delta<- solv_delta$par[(n + 1):(2 * n)]
-
-
-  # compute MVN probs and est error ---------------------------------
-  exp_psi <- sample_latent(tmet_obj, lower, upper, delta = delta, M = M,QMC=QMC, ret_llk = ret_llk,
-                           method = "TMET")
-
-
-  if(ret_llk){
-    exponent <- exp_psi[[2]]
-    log_pmvn <- exponent +log(exp_psi[[1]])
-    return (log_pmvn)
-    # lw <- exp_psi[[3]]
-    # delta <- delta
-    return(list("weights" = lw, "delta"=delta))
-  }else{
-    return(exp_psi$summary_stats)
-  }
+  
+  NN
 }
-
-#' @keywords internal
-#' @noRd
-loglik_tmet<- function(ab, tau, M = 1000, od, pm = 30, QMC=TRUE, ret_llk = TRUE) {
-  if (length(tau) != sum(od)) {
-    stop("Length of 'tau' must equal sum of AR and MA orders: length(tau) = ",
-         length(tau), ", expected = ", sum(od), ".")
-  }
-  if (all(od == 0)) {
-    stop("ARMA(0,0) (white noise) is not supported. Please specify at least one AR or MA term.")
-  }
-
-
-  if (any(is.na(ab)) || any(is.nan(ab))) return(-1e20)
-  a <- ab[,1]
-  b <- ab[,2]
-  p <- od[1]
-  q <- od[2]
-
-  pm <- if (q == 0) p else pm
-
-  result <- tryCatch({
-    pmvn_tmet(a, b, tau, od, pm,M,
-                     QMC = QMC, ret_llk = ret_llk)
-  }, error = function(e) {
-    message("TMET failed: ", e$message)
-    return(-1e20)
-  })
-
-  return(result)
-}
-
-#' @keywords internal
-#' @noRd
-cond_mv_tmet <- function(NN, tau, od) {
-  n <- nrow(NN)
-  if (!all(NN[, 1] == 1:n)) stop("Unexpected NN: first col is not 1:n\n")
-  pm <- ncol(NN) - 1
-  .p <- od[1]
-  .q <- od[2]
-  iar <- if ( .p ) 1:.p else NULL
-  ima <- if ( .q ) (.p+1):(.p+.q) else NULL
-  phi <- tau[iar]
-  theta<-tau[ima]
-
-  ### innovation algorithm assume p>=1, q>=1
-  if(.p==0){
-    p<- 1
-    phi <-0
-  } else {p<-.p}
-  if(.q==0){
-    q<-1
-    theta<-0
-  } else{q <- .q}
-
-  m = max(p,q)
-  Tau <- list(phi=phi, theta=theta)
-  sigma2 <- 1 / sum(ma.inf(Tau)^2)
-
-  gamma <- aacvf(Tau, n - 1)
-
-  theta_r <- c(1, theta, numeric(n))
-
-  model <- list(phi = phi, theta_r = theta_r, p = p, q = q, m = m,
-                sigma2 = sigma2, gamma = gamma, n = n)
-  out_cpp <- compute_cond_var(gamma, model)
-  v <- out_cpp$v
-  cond_var <- v*sigma2
-
-  ##### theta_tk is saved to compute the conditional mean
-  Theta <- out_cpp$Theta
-  arma_blup_coef = - (ar.inf(Tau,pm)[-1])
-
-  cond_mean_coeff <- matrix(0, n, pm)
-  # first loop: i from 2:(pm-1)
-  if(pm > 2){
-    DL <- durbin_levinson(gamma, pm,cond_var[-1])
-    for (i in 2:(pm - 1)) {
-      cond_mean_coeff[i, 1:(i - 1)] <- DL[(i-1),1:(i - 1)]
-    }
-  }
-
-  # Second loop: i from (pm - 1) to n
-  for (i in max(2, pm):n) {
-    cond_mean_coeff[i, 1:pm] <- arma_blup_coef[1:pm]
-  }
-
-
-  B <- sparse_B(NN, cond_mean_coeff, n, pm)
-
-  list(
-    cond_var = cond_var,
-    cond_mean_coeff = cond_mean_coeff,
-    B = B,
-    NN = NN,
-    Theta = Theta,
-    phi = phi,
-    p = .p,
-    q = .q,
-    m = m
-  )
-
-}
-
-
-
-#' @keywords internal
-#' @noRd
-sparse_B <- function(NNarray, cond_mean_coeff, n, pm) {
-  nnz_per_row <- pmin(pm + 1, 1:n)
-  total_nnz <- sum(nnz_per_row)
-
-  B_row_inds <- integer(total_nnz)
-  B_col_inds <- integer(total_nnz)
-  B_vals     <- numeric(total_nnz)
-
-  pos <- 1
-  for (i in 1:n) {
-    k <- nnz_per_row[i]
-    idx <- pos:(pos + k - 1)
-
-    B_row_inds[idx] <- i
-    B_col_inds[idx] <- NNarray[i, 1:k]
-
-    if (k > 1) {
-      B_vals[idx[-1]] <- cond_mean_coeff[i, seq_len(k - 1)]
-    }
-
-    pos <- pos + k
-  }
-
-  Matrix::sparseMatrix(i = B_row_inds, j = B_col_inds, x = B_vals, dims = c(n, n))
-}
-
-
-
-
-
-
-

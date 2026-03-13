@@ -2,29 +2,46 @@
 % Please edit documentation in R/cormat.R
 \name{arma.cormat}
 \alias{arma.cormat}
-\title{ARMA Correlation Structure for Copula Time Series}
+\title{ARMA Correlation Structure for Copula Count Time Series Models}
 \usage{
 arma.cormat(p = 0, q = 0, tau.lower = NULL, tau.upper = NULL)
 }
 \arguments{
-\item{p}{Integer. AR order (non-negative).}
+\item{p}{Non-negative integer specifying the autoregressive (AR) order.}
 
-\item{q}{Integer. MA order (non-negative).}
+\item{q}{Non-negative integer specifying the moving-average (MA) order.
+The model ARMA(0,0) is not supported.}
 
-\item{tau.lower}{Optional vector of lower bounds for the ARMA parameters.}
+\item{tau.lower}{Optional numeric vector of length \code{p + q}
+specifying lower bounds for the ARMA parameters.}
 
-\item{tau.upper}{Optional vector of upper bounds for the ARMA parameters.}
+\item{tau.upper}{Optional numeric vector of length \code{p + q}
+specifying upper bounds for the ARMA parameters.}
 }
 \value{
-An object of class \code{"arma.gctsc"} and \code{"cormat.gctsc"}, containing:
-\item{npar}{Number of ARMA parameters.}
-\item{od}{A length-2 vector \code{c(p, q)} giving the AR and MA order.}
-\item{start}{Function to compute starting values from data using \code{\link[stats]{arima}}.}
+An object of class \code{"arma.gctsc"} and \code{"cormat.gctsc"}
+containing:
+\itemize{
+\item \code{npar}: Number of ARMA parameters (\eqn{p + q}).
+\item \code{od}: Integer vector \code{c(p, q)}.
+\item \code{start}: Function to compute starting values from data,
+typically using \code{\link[stats]{arima}}.
+\item \code{lower}, \code{upper}: Parameter bounds.
+}
 }
 \description{
-Constructs a correlation structure object for use in Gaussian copula time series models
-with autoregressive moving average (ARMA) dependence.
+Constructs an ARMA(\eqn{p,q}) correlation structure for use in
+Gaussian and Student--t copula count time series models.
+}
+\details{
+The ARMA model specifies the dependence structure of the latent
+copula process.
+
+The ARMA parameters must define a stationary and invertible process.
+These conditions are enforced during model fitting.
 }
 \seealso{
-\code{\link{gctsc}}, \code{\link{poisson.marg}}, \code{\link{predict.gctsc}}
+\code{\link{gctsc}},
+\code{\link{poisson.marg}},
+\code{\link{predict.gctsc}}
 }

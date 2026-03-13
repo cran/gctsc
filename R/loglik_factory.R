@@ -4,7 +4,7 @@ build_loglik <- function(md, M, penalt=NA){
   n <- md$n
   y <- md$y
   x <- md$x
-  is.int <- md$method !="CE"
+  is.int <- !(md$method %in% c("CE","CE_test"))
   bounds <- md$marginal$bounds
   ibeta <- md$ibeta
   itau<- md$itau
@@ -14,6 +14,8 @@ build_loglik <- function(md, M, penalt=NA){
   ns <- md$options$M
   seed <- md$options$seed
   c <- md$c
+  family <- md$family
+  df<- md$df
   method <- md$method
   QMC <- md$QMC
   pm <- md$pm
@@ -23,14 +25,15 @@ build_loglik <- function(md, M, penalt=NA){
     ret_llk = TRUE,
     pm = pm,
     od=od,
-    QMC=QMC
+    QMC=QMC,
+    df=df
   )
   eta <- md$fixed
   cache <- new.env()
   function( eta ) {
     beta <- eta[ibeta]
     if (!identical(cache$beta,beta)) {
-      ab <-  bounds(y,x,beta)
+      ab <-  bounds(y,x,beta, family, df)
       assign("beta",beta,envir=cache)
       assign("ab",ab,envir=cache)
     } else {
@@ -38,6 +41,7 @@ build_loglik <- function(md, M, penalt=NA){
     }
     if (is.null(ab) || any(is.nan(ab))) {
 
+      # cat("Invalid ab (NULL or NaN) for beta:", beta, "\n")
 
       return(NA)
 
@@ -60,7 +64,7 @@ build_loglik <- function(md, M, penalt=NA){
 
     }
     if (is.int) set.seed(seed)
-    lk <-  llk.fn(cfg, ab, tau)
+    lk <-  llk.fn(cfg, ab, tau,family)
     if ( is.finite(lk))   (lk) else penalt
   }
 }
@@ -68,21 +72,57 @@ build_loglik <- function(md, M, penalt=NA){
 
 #' @keywords internal
 #' @noRd
-llk.fn <- function(cfg, ab, tau) {
-  method <- cfg$method
-  arg2 <- cfg$arg2
+llk.fn <- function(cfg, ab, tau, family) {
+  
+  method  <- cfg$method
+  arg2    <- cfg$arg2
   ret_llk <- cfg$ret_llk
-  od <- cfg$od
-  QMC <- cfg$QMC
-  pm <- cfg$pm
+  od      <- cfg$od
+  QMC     <- cfg$QMC
+  pm      <- cfg$pm
+  df      <- cfg$df
+  
   result <- switch(method,
-                   "CE"   = loglik_ce(ab, tau, c = arg2, od, ret_llk),
-                   "GHK"  = loglik_ghk(ab, tau, M = arg2, od, QMC,ret_llk),
-                   "TMET" = loglik_tmet(ab, tau, M = arg2, od,pm, QMC, ret_llk),
-                   "VMET" = loglik_vmet(ab, tau,  M = arg2, od, QMC),
+                   
+                   "CE" = loglik_ce(
+                     ab = ab, tau = tau,
+                     c = arg2, od = od,
+                     ret_llk = ret_llk,
+                     df = df, family = family
+                   ),
+                   
+                   "GHK" = loglik_ghk(
+                     ab = ab, tau = tau,
+                     M = arg2, od = od,
+                     QMC = QMC,
+                     ret_llk = ret_llk,
+                     df = df,
+                     family = family,
+                     engine = "mvn"
+                   ),
+                   
+                   "GHK_mvt" = loglik_ghk(
+                     ab = ab, tau = tau,
+                     M = arg2, od = od,
+                     QMC = QMC,
+                     ret_llk = ret_llk,
+                     df = df,
+                     family = family,
+                     engine = "mvt"
+                   ),
+                   
+                   "TMET" = loglik_tmet(
+                     ab = ab, tau = tau,
+                     M = arg2, od = od,
+                     QMC = QMC,
+                     ret_llk = ret_llk,
+                     df = df,
+                     family = family
+                   ),
+                   
                    stop("Unknown method")
   )
-
+  
   return(result)
 }
 

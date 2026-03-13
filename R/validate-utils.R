@@ -27,7 +27,7 @@
   }
 }
 
-.check_common <- function(nsim, tau, arma_order, seed, fn) {
+.check_common <- function(nsim, tau, arma_order, seed, family, df, fn) {
   # nsim
   if (!is.numeric(nsim) || length(nsim) != 1L || !is.finite(nsim) ||
       nsim < 1 || nsim != as.integer(nsim)) {
@@ -67,7 +67,7 @@
     ar_poly <- c(1, -phi)                     # 1 - sum phi_i z^i
     r <- polyroot(ar_poly)
     if (any(Mod(r) <= 1)) {
-      stop(sprintf("%s(): AR polynomial is not stationary (a root has |z| <=1). Coefficients: %s",
+      stop(sprintf("%s(): AR polynomial is not stationary (a root has |z| <= 1). Coefficients: %s",
                    fn, paste(phi, collapse = ",")), call. = FALSE)
     }
   }
@@ -75,8 +75,23 @@
     ma_poly <- c(1, theta)                     # 1 + sum theta_j z^j
     r <- polyroot(ma_poly)
     if (any(Mod(r) <= 1)) {
-      stop(sprintf("%s(): MA polynomial is not invertible (a root has |z| <= 1). Coefficients: %s",
+      stop(sprintf("%s(): MA polynomial is not invertible (a root has |z| <=1). Coefficients: %s",
                    fn, paste(theta, collapse = ",")), call. = FALSE)
+    }
+  }
+  # family
+  if (!is.character(family) || length(family) != 1L ||
+      !(family %in% c("gaussian", "t"))) {
+    stop(sprintf("%s(): 'family' must be 'gaussian' or 't'. Got %s.",
+                 fn, paste(family, collapse = ",")), call. = FALSE)
+  }
+  
+  # df (only for t copula)
+  if (family == "t") {
+    if (is.null(df) || !is.numeric(df) || length(df) != 1L ||
+        !is.finite(df) || df <= 2) {
+      stop(sprintf("%s(): 'df' must be a single numeric value > 2 when family = 't'. Got %s.",
+                   fn, paste(df, collapse = ",")), call. = FALSE)
     }
   }
   invisible(TRUE)
@@ -125,14 +140,11 @@
   }
 }
 
-# ----------------------------------
-# Common validators for fitting
-# -----------------------------------
-# small helper
+################################ main helper##############################
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
 .validate_method <- function(method, fn) {
-  ok <- c("TMET","GHK","CE","VMET")
+  ok <- c("TMET","GHK","CE","GHK_mvt")
   if (!method %in% ok) {
     stop(sprintf("%s(): 'method' must be one of %s. Got %s.",
                  fn, paste(ok, collapse = ", "), method), call. = FALSE)
@@ -193,12 +205,6 @@
     stop(sprintf("%s(): 'formula' must be a formula or a named list of formulas.", fn), call. = FALSE)
   }
   
-  # alias handling: allow 'pi' as 'pi0'
-  if (!is.null(formula$pi) && is.null(formula$pi0)) {
-    message(sprintf("%s(): 'pi' detected; treating as 'pi0'.", fn))
-    formula$pi0 <- formula$pi
-    formula$pi  <- NULL
-  }
   
   if (has_ZI(marginal)) {
     # ZI needs mu and pi0; default to intercept-only if missing
@@ -226,10 +232,6 @@
     }
     if (!inherits(formula$mu, "formula")) stop(sprintf("%s(): must be a formula.", fn), call. = FALSE)
     # ignore any pi/pi0 politely
-    if (!is.null(formula$pi0) || !is.null(formula$pi)) {
-      message(sprintf("%s(): ignoring pi/pi0 formula for non-zero-inflated marginal.", fn))
-      formula$pi0 <- NULL; formula$pi <- NULL
-    }
   }
   
   formula
@@ -268,8 +270,8 @@
   
   # === Build model frames ===
   if (has_ZI(marginal)) {
-    mf_mu  <- model.frame(f_mu,            data = data, na.action = na.pass)
-    mf_pi0 <- model.frame(formula$pi0,     data = data, na.action = na.pass)
+    mf_mu  <- model.frame(f_mu, data = data, na.action = na.pass)
+    mf_pi0 <- model.frame(formula$pi0, data = data, na.action = na.pass)
     y      <- model.response(mf_mu)
     if (!is.numeric(y)) {
       stop(sprintf("%s(): response must be numeric counts.", fn), call. = FALSE)
@@ -314,6 +316,7 @@ validate_x_structure <- function(x, marginal, fn = "gctsc") {
   invisible(TRUE)
 }
 
+
 check_x_nrow_matches_y <- function(x, y, marginal = NULL, fn = "gctsc") {
   n <- length(y)
   if (is.list(x)) {
@@ -328,6 +331,7 @@ check_x_nrow_matches_y <- function(x, y, marginal = NULL, fn = "gctsc") {
   }
   invisible(TRUE)
 }
+
 
 # Optional AR/MA admissibility check for initial tau
 .check_arima_admissibility <- function(tau, p, q, fn) {
@@ -357,5 +361,36 @@ add_intercept_if_needed <- function(X_test, req_cols) {
   # Ensure it is a named numeric vector
   X_test <- unlist(X_test, use.names = TRUE)
   return(X_test)
+}
+
+#' @keywords internal
+#' @noRd
+preserve_seed <- function(expr) {
+  if (exists(".Random.seed", envir = .GlobalEnv)) {
+    seed.keep <- .Random.seed
+    on.exit(assign(".Random.seed", seed.keep, envir = .GlobalEnv), add = TRUE)
+  }
+  force(expr)
+}
+
+
+#' @keywords internal
+#' @noRd
+remove_na <- function(y, x) {
+  if (is.null(x)) {
+    x <- rep(1, length(y))  # intercept-only model
+  }
+  
+  x_mat <- if (is.list(x)) do.call(cbind, x) else x
+  not.na <- rowSums(is.na(cbind(y, x_mat))) == 0
+  
+  y_clean <- y[not.na]
+  if (is.list(x)) {
+    x_clean <- lapply(x, function(col) col[not.na])
+  } else {
+    x_clean <- x[not.na, , drop = FALSE]
+  }
+  
+  list(y = y_clean, x = x_clean, not.na = not.na)
 }
 

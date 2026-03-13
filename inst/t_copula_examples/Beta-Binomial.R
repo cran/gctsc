@@ -30,6 +30,7 @@ rho  <- 0.18                  # intra-class correlation
 phi  <- 0.8                   # AR(1) parameter
 tau  <- c(phi)
 arma_order <- c(1, 0)
+df <- 5
 
 ## --- Simulate Beta–Binomial time series ---
 set.seed(1)
@@ -39,16 +40,36 @@ sim_data <- sim_bbinom(
   size       = size,
   tau        = tau,
   arma_order = arma_order,
+  family = "t",
+  df =5,
   nsim       = n
 )
 y <- sim_data$y
+
+
+X <- matrix(1, nrow = n)
+
+## --- Compute truncation bounds ---
+marg <- bbinom.marg(link = "logit", size= size)
+ab <- marg$bounds(y, X, c(prob,rho),family ="t", df= df)
+
+## --- Likelihood approximation ---
+llk_tmet <- pmvt_tmet(lower = ab[,1], upper = ab[,2],
+                      tau = tau, od = arma_order, 
+                      pm = 30, QMC = TRUE, df= df)
+
+llk_ghk  <- pmvt_ghk( lower = ab[,1], upper = ab[,2],
+                      tau = tau, od = arma_order,
+                      QMC = TRUE, df= df)
+
+c(TMET = llk_tmet, GHK = llk_ghk)
 
 ## --- Fit Gaussian copula Beta–Binomial model using TMET ---
 fit_bbinom <- gctsc(
   formula  = y ~ 1,
   marginal = bbinom.marg(link = "logit", size = size),
   cormat   = arma.cormat(p = 1, q = 0),
-  method   = "TMET",
+  method   = "TMET", family = "t", df=5,
   options  = gctsc.opts(seed = 1, M = 1000)
 )
 
@@ -113,11 +134,30 @@ sim_data <- sim_bbinom(
   size       = size,
   tau        = tau,
   arma_order = arma_order,
+  family = "gaussian",
   nsim       = n
 )
 y <- sim_data$y
 
-## --- Fit Gaussian copula Beta–Binomial model ---
+
+
+## --- Compute truncation bounds ---
+marg <- bbinom.marg(link = "logit", size= size)
+ab <- marg$bounds(y, as.matrix(X), c(0.2, 0.3, 0.5, 0.3, rho),family ="t", df= df)
+
+## --- Likelihood approximation ---
+llk_tmet <- pmvt_tmet(lower = ab[,1], upper = ab[,2],
+                      tau = tau, od = arma_order, 
+                      pm = 30, QMC = TRUE, df= df)
+
+llk_ghk  <- pmvt_ghk( lower = ab[,1], upper = ab[,2],
+                      tau = tau, od = arma_order,
+                      QMC = TRUE, df= df)
+
+c(TMET = llk_tmet, GHK = llk_ghk)
+
+
+## --- Fit t copula Beta–Binomial model ---
 data_df <- data.frame(y = y, X)
 
 fit_bbinom_cov <- gctsc(
@@ -125,7 +165,7 @@ fit_bbinom_cov <- gctsc(
   data     = data_df,
   marginal = bbinom.marg(link = "logit", size = size),
   cormat   = arma.cormat(p = 1, q = 0),
-  method   = "TMET",
+  method   = "TMET",family = "t", df=5,
   options  = gctsc.opts(seed = 1, M = 1000)
 )
 

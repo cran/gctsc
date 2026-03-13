@@ -1,20 +1,38 @@
-#' ARMA Correlation Structure for Copula Time Series
+#' ARMA Correlation Structure for Copula Count Time Series Models
 #'
-#' Constructs a correlation structure object for use in Gaussian copula time series models
-#' with autoregressive moving average (ARMA) dependence.
+#' Constructs an ARMA(\eqn{p,q}) correlation structure for use in
+#' Gaussian and Student--t copula count time series models.
 #'
-#' @param p Integer. AR order (non-negative).
-#' @param q Integer. MA order (non-negative).
-#' @param tau.lower Optional vector of lower bounds for the ARMA parameters.
-#' @param tau.upper Optional vector of upper bounds for the ARMA parameters.
+#' The ARMA model specifies the dependence structure of the latent
+#' copula process. 
 #'
-#' @return An object of class \code{"arma.gctsc"} and \code{"cormat.gctsc"}, containing:
-#' \item{npar}{Number of ARMA parameters.}
-#' \item{od}{A length-2 vector \code{c(p, q)} giving the AR and MA order.}
-#' \item{start}{Function to compute starting values from data using \code{\link[stats]{arima}}.}
+#' @param p Non-negative integer specifying the autoregressive (AR) order.
+#' @param q Non-negative integer specifying the moving-average (MA) order.
+#'   The model ARMA(0,0) is not supported.
 #'
-#' @seealso \code{\link{gctsc}}, \code{\link{poisson.marg}}, \code{\link{predict.gctsc}}
+#' @param tau.lower Optional numeric vector of length \code{p + q}
+#'   specifying lower bounds for the ARMA parameters. 
 #'
+#' @param tau.upper Optional numeric vector of length \code{p + q}
+#'   specifying upper bounds for the ARMA parameters.
+#'
+#' @return An object of class \code{"arma.gctsc"} and \code{"cormat.gctsc"}
+#' containing:
+#' \itemize{
+#'   \item \code{npar}: Number of ARMA parameters (\eqn{p + q}).
+#'   \item \code{od}: Integer vector \code{c(p, q)}.
+#'   \item \code{start}: Function to compute starting values from data,
+#'         typically using \code{\link[stats]{arima}}.
+#'   \item \code{lower}, \code{upper}: Parameter bounds.
+#' }
+#'
+#' @details
+#' The ARMA parameters must define a stationary and invertible process.
+#' These conditions are enforced during model fitting.
+#'
+#' @seealso \code{\link{gctsc}},
+#'   \code{\link{poisson.marg}},
+#'   \code{\link{predict.gctsc}}
 #'
 #' @export
 

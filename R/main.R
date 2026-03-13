@@ -1,112 +1,143 @@
-#' Fit a Gaussian Copula Time Series Model for Count Data
+#' Fit a Copula-Based Count Time Series Model
 #'
-#' Fits a Gaussian copula model to univariate count time series using discrete
-#' marginals (Poisson, negative binomial, binomial/beta–binomial, and
-#' zero–inflated variants) and latent dependence through ARMA correlation
-#' structures. The multivariate normal rectangle probability is evaluated using
-#' Minimax Exponential Tilting (TMET), the
-#' Geweke–Hajivassiliou–Keane (GHK) simulator, or the Continuous Extension (CE)
-#' approximation.
+#' Fits a Gaussian or Student--t copula model to univariate count
+#' time series with discrete marginals (Poisson, negative binomial,
+#' binomial/beta–binomial, and zero–inflated variants) and latent
+#' dependence specified via ARMA correlation structures.
 #'
-#' The interface mirrors \code{glm()}. Zero–inflated marginals accept a list of
-#' formulas, for example \code{list(mu = y ~ x, pi0 = ~ z)}. Non–zero–inflated
-#' marginals accept a single formula (e.g., \code{y ~ x1 + x2}).
-#'
-#' @param formula A formula (e.g., \code{y ~ x1 + x2}) or, for zero–inflated
-#'   marginals, a named list of formulas \code{list(mu = ..., pi0 = ...)}.
-#' @param data A data frame containing \code{y} and covariates referenced in the
-#'   formula(s).
-#' @param marginal A marginal model object such as \code{\link{poisson.marg}},
-#'   \code{\link{negbin.marg}}, \code{\link{zib.marg}}, or \code{\link{zibb.marg}}.
-#'   See \code{\link{marginal.gctsc}} for the full list of supported marginals.
-#' @param cormat A correlation structure such as \code{\link{arma.cormat}}.
-#' @param method One of \code{"TMET"}, \code{"GHK"}, or \code{"CE"}.
-#' @param c Smoothing constant for the CE approximation (ignored for TMET/GHK).
-#'   Default is \code{0.5}.
-#' @param QMC Logical; use quasi–Monte Carlo sampling for simulation–based
-#'   likelihood approximations.
-#' @param pm Integer; truncated AR order used to approximate ARMA(\eqn{p,q})
-#'   when \eqn{q>0} (TMET only).
-#' @param start Optional numeric vector of starting values (marginal parameters
-#'   followed by dependence parameters).
-#'
-#' @param options Optional list specifying the random seed and Monte Carlo
-#'   sample size for the likelihood approximation. If omitted, default values
-#'   from \code{gctsc.opts()} are used (i.e., \code{seed = NULL} and
-#'   \code{M = 1000}).
-#'
-#'   For simulation–based likelihoods (\code{method = "GHK"} or
-#'   \code{method = "TMET"}), providing a fixed \code{seed} (e.g.,
-#'   \code{options = gctsc.opts(seed = 123)}) is **strongly recommended** to
-#'   ensure reproducible and numerically stable likelihood evaluations. Without
-#'   a fixed seed, the approximate log-likelihood may vary slightly between
-#'   evaluations, which can affect numerical optimization.
-#'
-#'   See \code{\link{gctsc.opts}} for additional tuning parameters and their
-#'   default values.
-#'
-#' @details
-#'
-#' **Formula handling**  
-#' For zero–inflated marginals:
+#' The high-dimensional rectangle probability defining the copula
+#' likelihood is approximated using one of:
 #' \itemize{
-#'   \item If neither \code{mu} nor \code{pi0} is supplied, both default to
-#'     intercept-only models (\code{mu ~ 1}, \code{pi0 ~ 1}).
-#'   \item If \code{mu} is supplied but \code{pi0} is omitted,
-#'     \code{pi0 ~ 1} is used.
+#'   \item \strong{TMET} (Time Series Minimax Exponential Tilting),
+#'   \item \strong{GHK} (Geweke--Hajivassiliou--Keane simulation), or
+#'   \item \strong{CE} (Continuous Extension).
 #' }
 #'
-#' **Dependence structure**  
-#' ARMA parameters are determined by \code{cormat}.  
+#' The interface mirrors \code{glm()}. Zero–inflated marginals accept a
+#' named list of formulas, e.g.,
+#' \code{list(mu = y ~ x, pi0 = ~ z)}. Non–zero–inflated marginals accept
+#' a single formula or \code{list(mu = ...)}.
+#'
+#' @param formula A formula (e.g., \code{y ~ x1 + x2}) or, for
+#'   zero–inflated marginals, a named list
+#'   \code{list(mu = ..., pi0 = ...)}. 
+#'
+#' @param data A data frame containing the response and covariates
+#'   referenced in the formula(s).
+#'
+#' @param marginal A marginal model object such as
+#'   \code{\link{poisson.marg}},
+#'   \code{\link{negbin.marg}},
+#'   \code{\link{zib.marg}}, or
+#'   \code{\link{zibb.marg}}; must inherit class
+#'   \code{"marginal.gctsc"}.
+#'
+#' @param cormat A correlation structure such as
+#'   \code{\link{arma.cormat}}; must inherit class
+#'   \code{"cormat.gctsc"}.
+#'
+#' @param method One of \code{"TMET"}, \code{"GHK"}, or \code{"CE"}.
+#'
+#' @param c Smoothing constant used by CE only (ignored otherwise).
+#'   Default is \code{0.5}.
+#'
+#' @param QMC Logical; if \code{TRUE}, quasi–Monte Carlo integration
+#'   is used for simulation–based methods.
+#'
+#' @param pm Integer specifying the truncated AR order used when
+#'   approximating ARMA(\eqn{p,q}) by an AR representation
+#'   (TMET only; relevant when \eqn{q > 0}). Default is 30
+#'
+#' @param start Optional numeric vector of starting values (marginal
+#'   parameters followed by dependence parameters). If \code{NULL},
+#'   sensible starting values and bounds are constructed from
+#'   \code{marginal} and \code{cormat}.
+#'
+#' @param options Optional list of tuning and optimization controls.
+#'   If \code{NULL}, defaults from \code{gctsc.opts()} are used
+#'   (e.g., \code{M = 1000}, randomized seed). Any supplied fields
+#'   override the defaults.
+#' 
+#' @param family Copula family. One of \code{"gaussian"}
+#'   or \code{"t"}.
+#'
+#' @param df Degrees of freedom for the Student--t copula.
+#'   Must be greater than 2. Required when \code{family = "t"}.
+#'   Ignored for the Gaussian copula.
+#'   
+#' @details
+#' \strong{Formulas.}
+#' For zero–inflated marginals, if neither \code{mu} nor \code{pi0}
+#' is supplied, both default to intercept–only models
+#' (\code{mu ~ 1}, \code{pi0 ~ 1}). If \code{mu} is supplied but
+#' \code{pi0} is missing, \code{pi0 ~ 1} is used.
+#'
+#' \strong{Dependence.}
+#' The ARMA parameters are encoded in \code{cormat}. Models must
+#' satisfy stationarity and invertibility conditions.
 #' ARMA(0,0) is not supported.
 #'
-#' **Method-specific notes**  
+#' \strong{Method-specific notes.}
+#' CE ignores \code{QMC} and \code{options$M}.
+#' GHK and TMET require \code{options$M} to be a positive integer.
+#' TMET additionally uses \code{pm} when \eqn{q > 0}.
+#'
+#' @return An object of class \code{"gctsc"} containing, among others:
 #' \itemize{
-#'   \item CE ignores \code{QMC} and \code{options$M}.
-#'   \item TMET and GHK require \code{options$M} to be a positive integer.
-#'   \item TMET optionally uses \code{pm} when \eqn{q>0}.
+#'   \item \code{coef}: parameter estimates,
+#'   \item \code{maximum}: approximate log–likelihood at the optimum,
+#'   \item \code{se}: standard errors when available,
+#'   \item \code{terms}, \code{model}, \code{call}: model metadata.
 #' }
 #'
-#' @return
-#' An object of class \code{"gctsc"} containing:
-#' \item{coef}{Numeric vector containing the parameter estimates, with marginal parameters first and dependence parameters last.}
-#' \item{maximum}{The maximized approximate log-likelihood value, returned on the internal minus scale used by the optimizer.}
-#' \item{hessian}{Estimated Hessian matrix at the optimum, when available.}
-#' \item{se}{Standard errors from the inverse Hessian, or NA if unavailable or not positive-definite.}
-#' \item{marginal}{The marginal model object used (e.g., Poisson, negative binomial, ZIB, ZIBB).}
-#' \item{cormat}{The correlation structure object used, typically created by \code{arma.cormat()}.}
-#' \item{ibeta}{Integer vector giving the indices of the marginal parameters within \code{coef}.}
-#' \item{itau}{Integer vector giving the indices of the dependence parameters within \code{coef}.}
-#' \item{nbeta}{Number of marginal parameters.}
-#' \item{ntau}{Number of dependence parameters.}
-#' \item{options}{List of fitting and optimization controls, typically created by \code{gctsc.opts()}.}
-#' \item{call}{The matched call.}
-#' \item{formula}{The model formula(s) used to specify the marginal mean and zero-inflation components.}
-#' \item{terms}{Terms objects for the marginal model(s).}
-#' \item{model}{The model frame used for estimation (returned only when needed).}
-#' \item{x}{Design matrix for the marginal mean component.}
-#' \item{z}{Design matrix for the zero-inflation component (ZIB or ZIBB only), or NULL otherwise.}
-#' \item{y}{The response vector.}
-#' \item{n}{Number of observations used in the fit.}
-#' \item{method}{Character string identifying the likelihood approximation used (TMET, GHK, or CE).}
-#' \item{QMC}{Logical flag indicating whether quasi-Monte Carlo sampling was used.}
-#' \item{pm}{Truncated AR order used to approximate ARMA(p,q) when q > 0 (TMET only).}
-#' \item{convergence}{Optimizer convergence code (0 indicates successful convergence).}
-#'
-#' The returned object can be used with
-#' \code{\link{summary.gctsc}}, \code{\link{predict.gctsc}},
-#' \code{\link{residuals.gctsc}}, and \code{\link{plot.gctsc}}.
+#' @references
+#' Nguyen, Q. N., & De Oliveira, V. (2026). Likelihood Inference in Gaussian Copula Models for Count Time Series
+#' via Minimax Exponential Tilting
+#' \emph{Journal of Computational Statistics and Data Analysis}.
+#' 
+#' Nguyen, Q. N., & De Oliveira, V. (2026).
+#' Scalable Likelihood Inference for Student--\eqn{t} Copula Count Time Series.
+#' Manuscript in preparation.
+#' 
+#' Nguyen, Q. N., & De Oliveira, V. (2026).
+#' Approximating Gaussian copula models for count time series:
+#' Connecting the distributional transform and a continuous extension.
+#' \emph{Journal of Applied Statistics}.
 #' 
 #' @examples
+#' ## Example 1: Gaussian copula, Poisson marginal, AR(1)
 #' set.seed(42)
-#' n <- 200
-#' y <- sim_poisson(mu = 10, tau = 0.3, arma_order = c(1,0), nsim = n)$y
-#' fit <- gctsc(y ~ 1,
+#' n <- 500
+#' sim_dat <- sim_poisson(mu = 10, tau = 0.3, arma_order = c(1, 0),
+#'                        nsim = n, family = "gaussian")
+#'
+#' dat <- data.frame(y = sim_dat$y)
+#'
+#' fit_gauss <- gctsc(
+#'   y ~ 1,
+#'   data = dat,
 #'   marginal = poisson.marg(lambda.lower = 0),
-#'   cormat = arma.cormat(p = 1, q = 0),
+#'   cormat = arma.cormat(p = 1, q = 0), family = "gaussian",
 #'   method = "CE",
-#'   options = gctsc.opts(M = 1000, seed = 42))
-#' summary(fit)
+#'   options = gctsc.opts(M = 1000, seed = 42)
+#' )
+#' summary(fit_gauss)
+#'
+#' ## Example 2: Student--t copula
+#' sim_dat_t <- sim_poisson(mu = 10, tau = 0.3, arma_order = c(1, 0),
+#'                          nsim = 500, family = "t", df = 10)
+#'
+#' dat_t <- data.frame(y = sim_dat_t$y)
+#'
+#' fit_t <- gctsc(
+#'   y ~ 1,
+#'   data = dat_t,
+#'   marginal = poisson.marg(lambda.lower = 0),
+#'   cormat = arma.cormat(p = 1, q = 0), family ="t",
+#'   df= 10, method = "CE",
+#'   options = gctsc.opts(M = 1000, seed = 42)
+#' )
+#' summary(fit_t)
 #'
 #' @seealso \code{\link{arma.cormat}}, \code{\link{poisson.marg}},
 #'   \code{\link{zib.marg}}, \code{\link{zibb.marg}}, \code{\link{gctsc.opts}}
@@ -115,9 +146,25 @@
 gctsc <- function(formula=NULL, data, marginal, cormat,
                   method = c("TMET", "GHK", "CE"),
                   c = 0.5, QMC = TRUE, pm = 30, start = NULL,
-                 options = gctsc.opts()) {
+                  family =c("t","gaussian"),df=10,
+                  options = gctsc.opts()) {
 
   method <- match.arg(method)
+  family <- match.arg(family)
+  
+  ## ---- t copula checks ----
+  if (family == "t") {
+    if (is.null(df))
+      stop("For a Student-t copula, 'df' must be provided.")
+    
+    if (!is.numeric(df) || length(df) != 1)
+      stop("'df' must be a single numeric value.")
+    
+    if (df <= 2)
+      stop("'df' must be greater than 2 for the t copula.")
+  }
+  
+  
   .validate_method(method, "gctsc")
   objs <- .validate_marg_cormat(marginal, cormat, "gctsc")
   marginal <- objs$marginal; cormat <- objs$cormat
@@ -129,10 +176,16 @@ gctsc <- function(formula=NULL, data, marginal, cormat,
   validate_x_structure(x, marginal, "gctsc")
   check_x_nrow_matches_y(x, y, marginal, "gctsc")
   
+  # passing family to marginal
+  
+  marginal$family <- family
+  marginal$df <- df
+  
+  
   # hand off
   fit <- gctsc.fit(x = x, y = y, marginal = marginal, cormat = cormat,
-                   method = method, c = c, QMC = QMC, pm = pm,
-                   start = start, options = options)
+                   method = method, c = c, QMC = QMC, pm = pm,df=df,
+                   start = start, options = options, family = family)
   
   fit$call <- match.call(expand.dots = FALSE)
   fit$formula <- formula
@@ -157,8 +210,9 @@ gctsc <- function(formula=NULL, data, marginal, cormat,
 #' @seealso \code{\link{gctsc}}
 #' @noRd
 gctsc.fit <- function(x = NULL, y, marginal, cormat,
-                      method = "GHK", c = 0.5, QMC = TRUE,
-                      start = NULL, pm = 30, options = gctsc.opts()) {
+                      method, c = 0.5, QMC = TRUE, df=NULL,
+                      start = NULL, pm = 30, options = gctsc.opts(),
+                      family = c("gaussian","t")) {
 
   objs <- .validate_marg_cormat(marginal, cormat, "gctsc.fit")
   marginal <- objs$marginal; cormat <- objs$cormat
@@ -221,7 +275,7 @@ gctsc.fit <- function(x = NULL, y, marginal, cormat,
     ibeta = 1:nbeta, itau = (nbeta + 1):(nbeta + ntau),
     nbeta = nbeta, ntau = ntau, QMC = QMC, pm = pm,
     call = match.call(), init_eta = init_eta, coef = init_eta,
-    lower = lb, upper = ub, options = options
+    lower = lb, upper = ub, options = options,family =family, df=df
   ), class = "gctsc")
   
   gctsc.estimate(f)
@@ -229,34 +283,92 @@ gctsc.fit <- function(x = NULL, y, marginal, cormat,
 
 
 
+
+
+#' Set Options for Gaussian and Student t Copula Time Series Model
+#'
+#' Creates a control list for simulation and likelihood approximation in the
+#' Gaussian ad Student t copula model, including the random seed and Monte Carlo settings.
+#'
+#' @param seed recommended to provde a seed. Integer specifying the random seed used for Monte Carlo
+#' simulation during likelihood evaluation. Fixing the seed ensures
+#' reproducible optimization results and stable maximum likelihood estimates.
+#' @param M Integer. Number of Monte Carlo samples used in the likelihood approximation (default: 1000).
+#' @param ... Ignored. Included for S3 method compatibility.
+#'
+#'
+#' @return
+#' A list with components:
+#'   \item{\code{seed}}{ Integer. The random seed used.}
+#'   \item{\code{M}}{ Integer. Number of Monte Carlo samples.}
+#'   \item{\code{opt}}{ A function used internally by \code{gctsc()} to
+#'         perform optimization of the approximate log-likelihood.}
+
+#' 
+#' @export
+gctsc.opts <- function(seed=NULL, M=1000, ...) {
+  
+  
+  control <- list(...)
+  opt <- function(start, llk_fn, lower, upper) {
+    fn.opt <- function(x)  {if( any(x <= lower | x >= upper) ) (1e10)
+      # Compute the log-likelihood sum
+      # else {-llk_fn(x)}
+      else {
+        val <- -llk_fn(x)
+        if (!is.finite(val)) return(1e10)
+        return(val)
+      }
+    }
+    ans <- optim(start, fn.opt, method= "BFGS", hessian = TRUE)
+    if(ans$convergence) warning(paste("optim exits with code",ans$convergence))
+    list(
+      estimate = ans$par,
+      maximum = ans$value,
+      convergence = ans$convergence,
+      hessian = ans$hessian
+    )
+  }
+  list(seed=seed,M=M,opt=opt)
+}
+
+
+
+
+
+
+
 #' @keywords internal
 #' @noRd
 gctsc.estimate <- function(cf) {
-
   
   if (!is.null(cf$options$seed)) {
     # Temporarily set user-provided seed
     set.seed(cf$options$seed)
   }
   
-
   start <- cf$init_eta
   low <- cf$lower
   up <- cf$upper
   penalty <- -sqrt(.Machine$double.xmax)
   M <- cf$options$M
   log.lik <- build_loglik(cf,M, penalty)
-
-  # saving/restoring the random seed (only for methods that need it)
-  ans <- suppressWarnings(cf$options$opt(start, log.lik, low, up))
   
-
+  # saving/restoring the random seed (only for methods that need it)
+  ans <- if (cf$method != "CE") {
+    preserve_seed({
+      suppressWarnings(cf$options$opt(start, log.lik, low, up))
+    })
+  } else {
+    suppressWarnings(cf$options$opt(start, log.lik, low, up))
+  }
+  
   eta <- ans$estimate
   names(eta) <- names(cf$coef)
   cf$coef <- eta
   cf$maximum <- ans$maximum
   cf$convergence <- ans$convergence
-
+  
   # Store Hessian if available
   if (!is.null(ans$hessian) && is.matrix(ans$hessian) && all(is.finite(ans$hessian))) {
     cf$hessian <- ans$hessian
@@ -273,14 +385,8 @@ gctsc.estimate <- function(cf) {
     warning("Hessian not available from optimization.")
     cf$se <- rep(NA, length(cf$coef))
   }
-
+  
   return(cf)
 }
-
-
-
-
-
-
 
 

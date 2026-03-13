@@ -2,35 +2,85 @@
 % Please edit documentation in R/residuals.R
 \name{residuals.gctsc}
 \alias{residuals.gctsc}
-\title{Compute Randomized Quantile Residuals for Gaussian Copula Time Series}
+\title{Randomized Quantile Residuals for Copula Count Time Series Models}
 \usage{
-\method{residuals}{gctsc}(object, method = NULL, ...)
+\method{residuals}{gctsc}(object, ...)
 }
 \arguments{
-\item{object}{A fitted object of class \code{gctsc}, produced by \code{\link{gctsc}}.}
-
-\item{method}{Can be \code{TMET} or \code{GHK}}
+\item{object}{A fitted model object of class \code{"gctsc"},
+as returned by \code{\link{gctsc}}.}
 
 \item{...}{Ignored. Included for S3 method compatibility.}
 }
 \value{
-A list containing:
-\item{residuals}{A numeric vector of randomized quantile residuals.}
-\item{pit}{A numeric vector of PIT values.}
+A list of class \code{"gctsc.residuals"} containing:
+\itemize{
+\item \code{residuals}: Numeric vector of randomized quantile residuals.
+\item \code{pit}: Numeric vector of probability integral transform values.
+}
 }
 \description{
-Computes residuals for a fitted \code{gctsc} object using randomized quantile residuals.
+Computes randomized quantile residuals for a fitted Gaussian or
+Student--t copula count time series model.
+
+For discrete responses, residuals are constructed using the
+randomized probability integral transform (PIT) as proposed by
+Dunn and Smyth (1996). When the likelihood is evaluated via
+simulation (TMET or GHK), the same engine is used to approximate
+the required conditional probabilities.
+}
+\details{
+For observation \eqn{y_t}, let \eqn{F_t(y_t^-)} and \eqn{F_t(y_t)}
+denote the conditional CDF evaluated at \eqn{y_t - 1} and \eqn{y_t},
+respectively. The PIT value is computed as
+\deqn{
+e_t = F_t(y_t^-) + u_t \{F_t(y_t) - F_t(y_t^-)\},
+}
+where \eqn{u_t \sim \mathrm{Uniform}(0,1)}.
+
+For Gaussian copulas, residuals are obtained as
+\eqn{r_t = \Phi^{-1}(e_t)}.
+
+For Student--t copulas with degrees of freedom \code{df},
+the residuals are defined as \eqn{r_t = t_{\nu}^{-1}(e_t)},
+where \eqn{t_{\nu}^{-1}} denotes the quantile function of the
+Student--t distribution.
 }
 \examples{
-y <- sim_poisson(mu = 5, tau = 0.7, arma_order = c(1, 0), nsim = 100)
-fit <- gctsc(y ~ 1, marginal = poisson.marg(), cormat = arma.cormat(1, 0),
-             method = "GHK", options = gctsc.opts(seed = 1, M = 1000))
+# Simulate Poisson AR(1) data under a Gaussian copula
+set.seed(1)
+y <- sim_poisson(mu = 5, tau = 0.7,
+                 arma_order = c(1, 0),
+                 nsim = 500,
+                 family = "gaussian")$y
+
+fit <- gctsc(
+  y ~ 1,
+  data = data.frame(y = y),
+  marginal = poisson.marg(),
+  cormat = arma.cormat(1, 0),
+  family = "gaussian",
+  method = "CE",
+  options = gctsc.opts(seed = 1, M = 1000)
+)
+
 res <- residuals(fit)
-hist(res$residuals, main = "Randomized Quantile Residuals", xlab = "Residual")
-hist(res$pit, main = "PIT Histogram", xlab = "PIT values")
+hist(res$residuals, main = "Randomized Quantile Residuals")
+hist(res$pit, main = "PIT Histogram")
 
 }
 \references{
-Dunn, P. K. and Smyth, G. K. (1996), Randomized quantile residuals,
-\emph{Journal of Computational and Graphical Statistics}, \strong{5}(3): 236-244.
+Dunn, P. K. and Smyth, G. K. (1996),
+Randomized quantile residuals,
+\emph{Journal of Computational and Graphical Statistics},
+\strong{5}(3): 236--244.
+
+Nguyen, Q. N., and De Oliveira, V. (2026),
+Likelihood Inference in Gaussian Copula Models for Count Time Series
+via Minimax Exponential Tilting,
+\emph{Computational Statistics and Data Analysis}.
+
+Nguyen, Q. N., and De Oliveira, V. (2026),
+Scalable Likelihood Inference for Student--\eqn{t} Copula Count Time Series,
+Manuscript in preparation.
 }

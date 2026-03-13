@@ -1,7 +1,7 @@
 #ifndef SAMPLING_UTILS_H
 #define SAMPLING_UTILS_H
 
-#include <RcppArmadillo.h>
+#include <Rcpp.h>
 #include <cmath>
 #include <algorithm>
 

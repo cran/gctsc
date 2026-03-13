@@ -82,12 +82,12 @@ poisson.marg <- function(link = "identity", lambda.lower = NULL, lambda.upper = 
 
     npar = function(x) NCOL(x),
 
-    bounds = function(y, x, lambda) {
+    bounds = function(y, x, lambda,family = "gaussian", df=NULL) {
       mu <- invlink(x %*% lambda)
       if (any(mu < 0)) stop("Negative mean detected. Use 'log' link or check predictors.")
       pdf <- dpois(y, mu)
       cdf <- ppois(y, mu)
-      bounds <- safe_cdf_bounds(pdf, cdf)
+      bounds <- safe_cdf_bounds(pdf, cdf, family, df)
       cbind(bounds$lower, bounds$upper)
     }
 
@@ -134,7 +134,7 @@ binom.marg <- function(link = "logit", size = NULL, lambda.lower = NULL, lambda.
 
     npar = function(x) NCOL(x),
 
-    bounds = function(y, x, lambda) {
+    bounds = function(y, x, lambda,family = "gaussian", df=NULL) {
       if (is.vector(y) || NCOL(y) == 1) {
         if (is.null(size)) stop("If y has 1 column, size must be provided.")
         size <- rep(size, length(y))
@@ -147,7 +147,7 @@ binom.marg <- function(link = "logit", size = NULL, lambda.lower = NULL, lambda.
       mu <- invlink(x %*% lambda)
       pdf <- dbinom(successes, size, mu)
       cdf <- pbinom(successes, size, mu)
-      bounds <- safe_cdf_bounds(pdf, cdf)
+      bounds <- safe_cdf_bounds(pdf, cdf,family, df)
       cbind(bounds$lower, bounds$upper)
     }
   )
@@ -219,7 +219,7 @@ zib.marg <- function(link = "logit", size = NULL, lambda.lower = NULL, lambda.up
       ncol(x$mu) + ncol(x$pi0)
     },
 
-    bounds = function(y, x, lambda) {
+    bounds = function(y, x, lambda, family = "gaussian", df=NULL) {
       if (!is.list(x)) stop("x must be a list with 'mu' and 'pi0'")
       X_mu <- x$mu
       X_pi0 <- x$pi0
@@ -239,7 +239,7 @@ zib.marg <- function(link = "logit", size = NULL, lambda.lower = NULL, lambda.up
                     (1 - pi0) * pmf)
       cdf <- pi0 + (1 - pi0) * cdf
 
-      bds <- safe_cdf_bounds(pdf, cdf)
+      bds <- safe_cdf_bounds(pdf, cdf, family, df)
       cbind(bds$lower, bds$upper)
     }
   )
@@ -280,7 +280,7 @@ negbin.marg <- function(link = "identity" ,lambda.lower = NULL, lambda.upper = N
 
     npar = function(x) (NCOL(x) +1) ,
 
-    bounds = function(y, x, lambda) {
+    bounds = function(y, x, lambda,family = "gaussian", df=NULL) {
       beta <- lambda[1:NCOL(x)]
       dispersion <- lambda[length(lambda)]
       mu <- invlink(x %*% beta)
@@ -288,10 +288,10 @@ negbin.marg <- function(link = "identity" ,lambda.lower = NULL, lambda.upper = N
       size <- 1 / dispersion
       pdf <- dnbinom(y, mu = mu, size = size)
       cdf <- pnbinom(y, mu = mu, size = size)
-      bounds <- safe_cdf_bounds(pdf, cdf)
+      bounds <- safe_cdf_bounds(pdf, cdf,family = family, df = df)
       cbind(bounds$lower, bounds$upper)
     }
-
+    
 
   )
   class(obj) <- "marginal.gctsc"
@@ -345,7 +345,7 @@ zip.marg <- function(link = "identity", lambda.lower = NULL, lambda.upper = NULL
       ncol(x$mu) + ncol(x$pi0)
     },
 
-    bounds = function(y, x, lambda) {
+    bounds = function(y, x, lambda,family = "gaussian", df=NULL) {
       X_mu <- x$mu
       X_pi0 <- x$pi0
       p_mu <- ncol(X_mu)
@@ -364,13 +364,13 @@ zip.marg <- function(link = "identity", lambda.lower = NULL, lambda.upper = NULL
                     (1 - pi0) * pmf)
       cdf <- pi0 + (1 - pi0) * cdf
 
-      bds <- safe_cdf_bounds(pdf, cdf)
+      bds <- safe_cdf_bounds(pdf, cdf, family, df)
       cbind(bds$lower, bds$upper)
       }
   )
 
   class(obj) <- "marginal.gctsc"
-  return(obj)
+  obj
 }
 
 
@@ -436,7 +436,7 @@ bbinom.marg <- function(link = "logit", size, lambda.lower = NULL, lambda.upper 
 
     npar = function(x) NCOL(x) + 1,  # slopes + rho
 
-    bounds = function(y, x, lambda) {
+    bounds = function(y, x, lambda,family = "gaussian", df=NULL) {
       beta <- lambda[1:NCOL(x)]
       rho_logit <- lambda[length(lambda)]
       rho <- plogis(rho_logit)
@@ -448,7 +448,7 @@ bbinom.marg <- function(link = "logit", size, lambda.lower = NULL, lambda.upper 
       pdf <- VGAM::dbetabinom.ab(y, size = size, shape1 = alpha1, shape2 = alpha2, log = FALSE)
       cdf <- VGAM::pbetabinom.ab(y, size = size, shape1 = alpha1, shape2 = alpha2, log = FALSE)
 
-      bounds <- safe_cdf_bounds(pdf, cdf)
+      bounds <- safe_cdf_bounds(pdf, cdf,family, df)
       cbind(bounds$lower, bounds$upper)
     }
   )
@@ -532,7 +532,7 @@ zibb.marg <- function(link = "logit", size, lambda.lower = NULL, lambda.upper = 
       ncol(x$mu)+1 + ncol(x$pi0)
     },
 
-    bounds = function(y, x, lambda) {
+    bounds = function(y, x, lambda,family = "gaussian", df=NULL) {
       if (!is.list(x)) stop("x must be a list with 'mu' and 'pi0'")
       X_mu <- x$mu
       X_pi0 <-x$pi0
@@ -557,7 +557,7 @@ zibb.marg <- function(link = "logit", size, lambda.lower = NULL, lambda.upper = 
       pdf <- ifelse(y == 0, pi0 + (1 - pi0) * f0, (1 - pi0) * pmf)
       cdf <- pi0 + (1 - pi0) * cdf
 
-      bounds <- safe_cdf_bounds(pdf, cdf)
+      bounds <- safe_cdf_bounds(pdf, cdf,family, df)
       cbind(bounds$lower, bounds$upper)
     }
   )

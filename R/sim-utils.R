@@ -1,35 +1,136 @@
+#' Simulate data from a gctsc or specification list
+#'
+#' @keywords internal
+#' @noRd
+sim <- function(object, nsim = 100, cop , seed = NULL, ...) {
+  if (missing(object)) {
+    stop("Argument 'object' is required.")
+  }
+  if (!is.null(seed)) set.seed(seed)
+  
+  # Validate components
+  if (!is.list(object) || is.null(object$marg) || is.null(object$par) || is.null(object$tau)) {
+    stop("object must be a list with components 'marg', 'par', and 'tau'.")
+  }
+  
+  marg <- object$marg
+  par  <- object$par
+  tau  <- object$tau
+  
+  
+  if (is.null(par$arma_order)) stop("'arma_order' must be provided in object$par.")
+  if (marg %in% c("poisson","negbin","zip") && is.null(par$mu)) stop("'mu' must be provided in object$par.")
+  if (marg %in% c("binom","zib","bbinom","zibb") && is.null(par$prob)) stop("'prob' must be provided in object$par.")
+  
+  mu         <- par$mu
+  prob       <- par$prob
+  od         <- par$arma_order
+  dispersion <- par$dispersion
+  rho        <- par$rho
+  size   <- par$size
+  pi0   <- par$pi0
+  
+  if (length(tau) != sum(od)) {
+    stop("Length of 'tau' must equal sum of AR and MA orders: length(tau) = ",
+         length(tau), ", expected = ", sum(od), ".")
+  }
+  
+  if (all(od == 0)) {
+    stop("ARMA(0,0) (white noise) is not supported.")
+  }
+  
+  # Convert ARMA params
+  p <- od[1]
+  q <- od[2]
+  iar <- if (p > 0) 1:p else NULL
+  ima <- if (q > 0) (p + 1):(p + q) else NULL
+  phi <- if (length(iar)) tau[iar] else numeric(0)
+  theta <- if (length(ima)) tau[ima] else numeric(0)
+  tau_list <- list(phi = phi, theta = theta)
+  sigma2 <- 1 / sum(ma.inf(tau_list)^2)
+  
+  # Simulate latent process
+  z <- switch(cop,
+              "gaussian" = gau_latent(tau_list, sigma2, nsim),
+              "t"        = t_latent(tau_list, sigma2, nsim, df = par$df))
+  u <- if (cop == "t") pt(z, df = par$df) else pnorm(z)
+  
+  # Parameters for marginals
+  
+  lambda <- switch(marg,
+                   "poisson" = list(mu = mu),
+                   "zip"     = list(mu = mu,pi0 = pi0),
+                   "negbin"  = list(mu = mu, dispersion = dispersion),
+                   "binom"   = list(prob = prob, size = size),
+                   "zib"     = list(prob = prob, size = size, pi0 = pi0),
+                   "bbinom"  = list(prob = prob, rho = rho, size = size),
+                   "zibb"    = list(prob = prob, rho = rho, size = size, pi0 = pi0),
+                   stop("Invalid marginal type: ", marg)
+  )
+  
+  y <- simulate_marginal(marg, u, lambda)
+  
+  return(list(
+    y = y,
+    z = z,
+    marginal = marg,
+    parameters = lambda,
+    cormat = list(arma_order = od, tau = tau)
+  ))
+}
+
+
 
 #' Simulate latent ARMA Gaussian process
 #'
 #' @name sim_latent
 #' @keywords internal
 #' @noRd
-sim_latent <- function(a, sigma2, n = 100) {
+gau_latent <- function(a, sigma2, n = 100) {
   p <- length(a$phi)
   q <- length(a$theta)
-  burn1 <- 1000  #' Burn-in for AR
-  burn2 <- 100   #' Burn-in for MA
-  total_n <- n + burn1 + burn2
-  
-  if (all(a$phi == 0) && all(a$theta == 0)) {
-    return(rnorm(n, mean = 0, sd = sqrt(sigma2)))
-  }
-  
-  z <- rnorm(total_n, mean = 0, sd = sqrt(sigma2))
-  
-  if (q > 0) {
-    z <- stats::filter(z, c(1, a$theta), sides = 1)
-    z <- z[-(1:burn2)]
-  }
-  
-  if (p > 0) {
-    z <- stats::filter(z, a$phi, method = "recursive")
-  }
-  
-  z_final <- z[(burn1 + 1):(burn1 + n)]
-  stopifnot(length(z_final) == n)
-  return(z_final)
+  burnin <- 1000
+  z <- arima.sim(
+    model = list(
+      ar = if (p > 0) a$phi else NULL,
+      ma = if (q > 0) a$theta else NULL
+    ),
+    n  = burnin + n,
+    sd = sqrt(sigma2)   # sd is standard deviation
+  )
+  z <- as.numeric(z[(burnin + 1):(burnin + n)])
+  return(z)
 }
+
+
+
+#' Simulate latent ARMA t process
+#'
+#' @name sim_latent
+#' @keywords internal
+#' @noRd
+t_latent <- function(a, sigma2, n = 100, df) {
+  stopifnot(df > 0)
+  burnin <- 1000
+  p <- length(a$phi)
+  q <- length(a$theta)
+  
+  z <- arima.sim(
+    model = list(
+      ar = if (p > 0) a$phi else NULL,
+      ma = if (q > 0) a$theta else NULL
+    ),
+    n  = burnin + n,
+    sd = sqrt(sigma2)   # sd is standard deviation
+  )
+  z <- as.numeric(z[(burnin + 1):(burnin + n)])
+  
+  S <- rchisq(1, df = df)
+  v <- z / sqrt(S / df)
+  
+  v
+}
+
 
 
 #' Inverse CDF simulation for copula-based marginals
@@ -74,7 +175,6 @@ simulate_marginal <- function(marg, u, lambda) {
          }
          ,
          "bbinom" = {
-           n <- length(u)
            if (!requireNamespace("VGAM", quietly = TRUE)) {
              stop("Please install the 'VGAM' package for beta-binomial simulation.")
            }

@@ -9,52 +9,133 @@
 \alias{sim_bbinom}
 \alias{sim_zib}
 \alias{sim_zibb}
-\title{Simulate from Gaussian Copula Time Series Models}
+\title{Simulate from Gaussian and t Copula Time Series Models}
 \usage{
-sim_poisson(mu, tau, arma_order, nsim = 100, seed = NULL)
+sim_poisson(
+  mu,
+  tau,
+  arma_order,
+  nsim,
+  family = c("gaussian", "t"),
+  df = NULL,
+  seed = NULL
+)
 
-sim_negbin(mu, dispersion, tau, arma_order, nsim = 100, seed = NULL)
+sim_negbin(
+  mu,
+  dispersion,
+  tau,
+  arma_order,
+  nsim = 100,
+  family = c("gaussian", "t"),
+  df = NULL,
+  seed = NULL
+)
 
-sim_zip(mu, pi0, tau, arma_order, nsim = 100, seed = NULL)
+sim_zip(
+  mu,
+  pi0,
+  tau,
+  arma_order,
+  nsim = 100,
+  family = c("gaussian", "t"),
+  df = NULL,
+  seed = NULL
+)
 
-sim_binom(prob, size, tau, arma_order, nsim = 100, seed = NULL)
+sim_binom(
+  prob,
+  size,
+  tau,
+  arma_order,
+  nsim = 100,
+  family = c("gaussian", "t"),
+  df = NULL,
+  seed = NULL
+)
 
-sim_bbinom(prob, rho, size, tau, arma_order, nsim = 100, seed = NULL)
+sim_bbinom(
+  prob,
+  rho,
+  size,
+  tau,
+  arma_order,
+  nsim = 100,
+  family = c("gaussian", "t"),
+  df = NULL,
+  seed = NULL
+)
 
-sim_zib(prob, pi0, size, tau, arma_order, nsim = 100, seed = NULL)
+sim_zib(
+  prob,
+  pi0,
+  size,
+  tau,
+  arma_order,
+  nsim = 100,
+  family = c("gaussian", "t"),
+  df = NULL,
+  seed = NULL
+)
 
-sim_zibb(prob, rho, pi0, size, tau, arma_order, nsim = 100, seed = NULL)
+sim_zibb(
+  prob,
+  rho,
+  pi0,
+  size,
+  tau,
+  arma_order,
+  nsim = 100,
+  family = c("gaussian", "t"),
+  df = NULL,
+  seed = NULL
+)
 }
 \arguments{
-\item{mu}{Mean parameter(s):
-\itemize{
-\item For Poisson, ZIP, and negative binomial: \eqn{\mu > 0}.
-\item Scalar or vector of length \code{nsim}.
-}}
+\item{mu}{Mean parameter(s) for Poisson-, ZIP-, and negative
+binomial-type marginals. Must satisfy \eqn{\mu > 0}. May be specified
+as a scalar or as a numeric vector of length \code{nsim} to allow
+time-varying means.}
 
-\item{tau}{Numeric vector of ARMA coefficients, ordered as
-\code{c(phi_1, ..., phi_p, theta_1, ..., theta_q)}. ARMA(0,0) is not supported.}
+\item{tau}{Numeric vector of ARMA dependence coefficients, ordered as
+\code{c(phi_1, ..., phi_p, theta_1, ..., theta_q)}, where
+\eqn{\phi_i} are autoregressive (AR) coefficients and
+\eqn{\theta_j} are moving-average (MA) coefficients.
+The model \code{ARMA(0, 0)} is not supported.}
 
-\item{arma_order}{Integer vector \code{c(p, q)} giving AR and MA orders.}
+\item{arma_order}{Integer vector \code{c(p, q)} specifying the AR and MA orders.}
 
-\item{nsim}{Positive integer; number of time points to simulate.}
+\item{nsim}{Positive integer giving the number of time points to simulate.}
 
-\item{seed}{Optional integer to set the random seed.}
+\item{family}{Character string specifying the copula family:
+\code{"gaussian"} or \code{"t"}.}
 
-\item{dispersion}{Overdispersion parameter for negative binomial marginals
-(\eqn{\kappa > 0} in \eqn{\mathrm{Var}(Y) = \mu + \kappa \mu^2}).}
+\item{df}{Degrees of freedom for the t copula. Must be a single numeric
+value greater than 2. Required only when \code{family = "t"}.}
 
-\item{pi0}{Zero-inflation probability for ZIP, ZIB, and ZIBB marginals:
-\eqn{0 \le \pi_0 < 1}, scalar or length \code{nsim}.}
+\item{seed}{Optional integer used to set the random seed.}
 
-\item{prob}{Probability parameter(s) for binomial-type marginals:
-\eqn{0 < p < 1}, scalar or length \code{nsim}.}
+\item{dispersion}{Overdispersion parameter for negative binomial marginals.
+Must satisfy \eqn{\kappa > 0}, where
+\eqn{\mathrm{Var}(Y) = \mu + \kappa \mu^2}.
+May be a scalar or a numeric vector of length \code{nsim}.}
 
-\item{size}{Number of trials for binomial-type marginals; positive integer
-(scalar).}
+\item{pi0}{Zero-inflation probability for ZIP, ZIB, and ZIBB marginals.
+Must satisfy \eqn{0 \le \pi_0 < 1}. May be a scalar or a numeric vector
+of length \code{nsim}.}
 
-\item{rho}{Intra-cluster correlation for beta-binomial and ZIBB marginals
-(\eqn{0 < \rho < 1} in \eqn{\mathrm{Var}(Y) = n p (1-p) [1 + (n-1)\rho]}) where \eqn{n} is the number of trials.}
+\item{prob}{Success probability parameter(s) for binomial-type marginals.
+Must satisfy \eqn{0 < p < 1}. May be a scalar or a numeric vector of
+length \code{nsim}.}
+
+\item{size}{Number of trials for binomial-type marginals; a positive
+integer scalar.}
+
+\item{rho}{Intra-class correlation parameter for beta-binomial and ZIBB
+marginals. Must satisfy \eqn{0 < \rho < 1}, where
+\eqn{\mathrm{Var}(Y) = n p (1-p)\{1 + (n-1)\rho\}} and \eqn{n} is the
+number of trials. May be a scalar or a numeric vector of length
+\code{nsim}.}
 }
 \value{
 A list with components:
@@ -67,7 +148,7 @@ A list with components:
 }
 }
 \description{
-These functions simulate time series data from Gaussian copula models
+These functions simulate time series data from Gaussian and t copula models
 with various discrete marginals and an ARMA dependence structure.
 }
 \details{
@@ -95,12 +176,16 @@ controls the extra probability mass at zero.
 }
 \examples{
 # Poisson example
-sim_poisson(mu = 10, tau = c(0.2, 0.2), arma_order = c(1, 1), nsim = 100, seed = 42)
+sim_poisson(mu = 10, tau = c(0.2, 0.2), 
+  arma_order = c(1, 1), nsim = 100, 
+  family = "gaussian", seed = 42)
 
 # Negative Binomial example
-sim_negbin(mu = 10, dispersion = 2, tau = c(0.5, 0.5), arma_order = c(1, 1))
+sim_negbin(mu = 10, dispersion = 2, tau = c(0.5, 0.5),
+  arma_order = c(1, 1),family = "gaussian",
+  nsim = 100, seed =1)
 
-# Beta-Binomial example with seasonal covariates
+# Zero Inflated Beta-Binomial example with seasonal covariates
 n <- 100
 xi <- numeric(n)
 zeta <- rnorm(n)
@@ -109,6 +194,7 @@ for (j in 3:n) {
 }
 prob <- plogis(0.2 + 0.3 * sin(2 * pi * (1:n) / 12) +
              0.5 * cos(2 * pi * (1:n) / 12) + 0.3 * xi)
-sim_zibb(prob, rho = 1/6, pi0 = 0.2, size = 24, tau = 0.5, arma_order = c(1, 0))
+sim_zibb(prob, rho = 1/6, pi0 = 0.2, size = 24, tau = 0.5,
+ arma_order = c(1, 0),family = "t", df = 10, nsim = 100)
 
 }

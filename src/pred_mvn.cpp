@@ -1,9 +1,10 @@
-#include <RcppArmadillo.h>
+#include <Rcpp.h>
 #include <cmath>
 #include <numeric>
 #include <algorithm>
 #include "gauss_utils.h"
 #include "sampling_utils.h"
+#include "lnNpr.h"
 using namespace std;
 using namespace Rcpp;
 
@@ -234,11 +235,6 @@ using namespace Rcpp;
      }
      p_y[y] = py;
 
-      // for(int j = 0; j < M; j++) {
-      //   w[j]= pnorm_p_b[j] - pnorm_p_a[j];
-      // }
-      // double w_mean = accumulate(w, w+M,0.0)/M;
-      // p_y[y] = w_mean;
     }
 
 
@@ -309,12 +305,7 @@ using namespace Rcpp;
    double Sd_pred;
    NumericVector Theta_pred(q + 1);
    NumericVector p_y(y_max + 1);
-   // double *w = new double[M];
 
-
-   // double Ey = 0.0;
-   // double Ey2 = 0.0;
-   // double VEy=0.0;
    GetRNGstate();
 
    if (QMC) {
@@ -351,7 +342,7 @@ using namespace Rcpp;
    };
 
    // Main loop
-   for (int i = 1; i < n; ++i) {
+   for (int i = 0; i < n; ++i) {
      double* mu = mu_all + i * M;
      fill(a_til, a_til + M, a[i]);
      fill(b_til, b_til + M, b[i]);
@@ -417,14 +408,12 @@ using namespace Rcpp;
          s_values += Theta(ki , ki - s ) * Theta(i, i - s ) * v[s];
        }
      }
-     Theta_pred[n - ki] = (kappa(i + 1, ki + 1) - s_values) / v[ki];
-
+     Theta(i , i - ki ) = (kappa(i + 1,ki+1) - s_values) / v[ki];
    }
    double sum_v = 0.0;
    double v_pred = 0.0;
    for (int s = i - q; s < i; ++s) {
-     int j = i - s;
-     sum_v += Theta_pred[j] * Theta_pred[j] * v[s];
+     sum_v += Theta(i, i - s) * Theta(i , i - s ) * v[s];
    }
 
    v_pred = kappa(i + 1, i + 1) - sum_v;
@@ -452,11 +441,6 @@ using namespace Rcpp;
      }
      p_y[y] = py;
 
-     // for(int j = 0; j < M; j++) {
-     //   w[j]= pnorm_p_b[j] - pnorm_p_a[j];
-     // }
-     // double w_mean = accumulate(w, w+ M,0.0)/M;
-     // p_y[y] = w_mean;
    }
 
 
@@ -467,9 +451,9 @@ using namespace Rcpp;
    delete[] pnorm_p_a; delete[] pnorm_p_b; delete[] nw;
 
    return List::create(
-     // Named("Ey") = Ey,
-     // Named("VEy") = VEy,
      Named("p_y") = p_y
    );
  }
+
+
 

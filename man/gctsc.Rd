@@ -2,7 +2,7 @@
 % Please edit documentation in R/main.R
 \name{gctsc}
 \alias{gctsc}
-\title{Fit a Gaussian Copula Time Series Model for Count Data}
+\title{Fit a Copula-Based Count Time Series Model}
 \usage{
 gctsc(
   formula = NULL,
@@ -14,126 +14,153 @@ gctsc(
   QMC = TRUE,
   pm = 30,
   start = NULL,
+  family = c("t", "gaussian"),
+  df = 10,
   options = gctsc.opts()
 )
 }
 \arguments{
-\item{formula}{A formula (e.g., \code{y ~ x1 + x2}) or, for zero–inflated
-marginals, a named list of formulas \code{list(mu = ..., pi0 = ...)}.}
+\item{formula}{A formula (e.g., \code{y ~ x1 + x2}) or, for
+zero–inflated marginals, a named list
+\code{list(mu = ..., pi0 = ...)}.}
 
-\item{data}{A data frame containing \code{y} and covariates referenced in the
-formula(s).}
+\item{data}{A data frame containing the response and covariates
+referenced in the formula(s).}
 
-\item{marginal}{A marginal model object such as \code{\link{poisson.marg}},
-\code{\link{negbin.marg}}, \code{\link{zib.marg}}, or \code{\link{zibb.marg}}.
-See \code{\link{marginal.gctsc}} for the full list of supported marginals.}
+\item{marginal}{A marginal model object such as
+\code{\link{poisson.marg}},
+\code{\link{negbin.marg}},
+\code{\link{zib.marg}}, or
+\code{\link{zibb.marg}}; must inherit class
+\code{"marginal.gctsc"}.}
 
-\item{cormat}{A correlation structure such as \code{\link{arma.cormat}}.}
+\item{cormat}{A correlation structure such as
+\code{\link{arma.cormat}}; must inherit class
+\code{"cormat.gctsc"}.}
 
 \item{method}{One of \code{"TMET"}, \code{"GHK"}, or \code{"CE"}.}
 
-\item{c}{Smoothing constant for the CE approximation (ignored for TMET/GHK).
+\item{c}{Smoothing constant used by CE only (ignored otherwise).
 Default is \code{0.5}.}
 
-\item{QMC}{Logical; use quasi–Monte Carlo sampling for simulation–based
-likelihood approximations.}
+\item{QMC}{Logical; if \code{TRUE}, quasi–Monte Carlo integration
+is used for simulation–based methods.}
 
-\item{pm}{Integer; truncated AR order used to approximate ARMA(\eqn{p,q})
-when \eqn{q>0} (TMET only).}
+\item{pm}{Integer specifying the truncated AR order used when
+approximating ARMA(\eqn{p,q}) by an AR representation
+(TMET only; relevant when \eqn{q > 0}). Default is 30}
 
-\item{start}{Optional numeric vector of starting values (marginal parameters
-followed by dependence parameters).}
+\item{start}{Optional numeric vector of starting values (marginal
+parameters followed by dependence parameters). If \code{NULL},
+sensible starting values and bounds are constructed from
+\code{marginal} and \code{cormat}.}
 
-\item{options}{Optional list specifying the random seed and Monte Carlo
-sample size for the likelihood approximation. If omitted, default values
-from \code{gctsc.opts()} are used (i.e., \code{seed = NULL} and
-\code{M = 1000}).
+\item{family}{Copula family. One of \code{"gaussian"}
+or \code{"t"}.}
 
-For simulation–based likelihoods (\code{method = "GHK"} or
-\code{method = "TMET"}), providing a fixed \code{seed} (e.g.,
-\code{options = gctsc.opts(seed = 123)}) is \strong{strongly recommended} to
-ensure reproducible and numerically stable likelihood evaluations. Without
-a fixed seed, the approximate log-likelihood may vary slightly between
-evaluations, which can affect numerical optimization.
+\item{df}{Degrees of freedom for the Student--t copula.
+Must be greater than 2. Required when \code{family = "t"}.
+Ignored for the Gaussian copula.}
 
-See \code{\link{gctsc.opts}} for additional tuning parameters and their
-default values.}
+\item{options}{Optional list of tuning and optimization controls.
+If \code{NULL}, defaults from \code{gctsc.opts()} are used
+(e.g., \code{M = 1000}, randomized seed). Any supplied fields
+override the defaults.}
 }
 \value{
-An object of class \code{"gctsc"} containing:
-\item{coef}{Numeric vector containing the parameter estimates, with marginal parameters first and dependence parameters last.}
-\item{maximum}{The maximized approximate log-likelihood value, returned on the internal minus scale used by the optimizer.}
-\item{hessian}{Estimated Hessian matrix at the optimum, when available.}
-\item{se}{Standard errors from the inverse Hessian, or NA if unavailable or not positive-definite.}
-\item{marginal}{The marginal model object used (e.g., Poisson, negative binomial, ZIB, ZIBB).}
-\item{cormat}{The correlation structure object used, typically created by \code{arma.cormat()}.}
-\item{ibeta}{Integer vector giving the indices of the marginal parameters within \code{coef}.}
-\item{itau}{Integer vector giving the indices of the dependence parameters within \code{coef}.}
-\item{nbeta}{Number of marginal parameters.}
-\item{ntau}{Number of dependence parameters.}
-\item{options}{List of fitting and optimization controls, typically created by \code{gctsc.opts()}.}
-\item{call}{The matched call.}
-\item{formula}{The model formula(s) used to specify the marginal mean and zero-inflation components.}
-\item{terms}{Terms objects for the marginal model(s).}
-\item{model}{The model frame used for estimation (returned only when needed).}
-\item{x}{Design matrix for the marginal mean component.}
-\item{z}{Design matrix for the zero-inflation component (ZIB or ZIBB only), or NULL otherwise.}
-\item{y}{The response vector.}
-\item{n}{Number of observations used in the fit.}
-\item{method}{Character string identifying the likelihood approximation used (TMET, GHK, or CE).}
-\item{QMC}{Logical flag indicating whether quasi-Monte Carlo sampling was used.}
-\item{pm}{Truncated AR order used to approximate ARMA(p,q) when q > 0 (TMET only).}
-\item{convergence}{Optimizer convergence code (0 indicates successful convergence).}
-
-The returned object can be used with
-\code{\link{summary.gctsc}}, \code{\link{predict.gctsc}},
-\code{\link{residuals.gctsc}}, and \code{\link{plot.gctsc}}.
+An object of class \code{"gctsc"} containing, among others:
+\itemize{
+\item \code{coef}: parameter estimates,
+\item \code{maximum}: approximate log–likelihood at the optimum,
+\item \code{se}: standard errors when available,
+\item \code{terms}, \code{model}, \code{call}: model metadata.
+}
 }
 \description{
-Fits a Gaussian copula model to univariate count time series using discrete
-marginals (Poisson, negative binomial, binomial/beta–binomial, and
-zero–inflated variants) and latent dependence through ARMA correlation
-structures. The multivariate normal rectangle probability is evaluated using
-Minimax Exponential Tilting (TMET), the
-Geweke–Hajivassiliou–Keane (GHK) simulator, or the Continuous Extension (CE)
-approximation.
+Fits a Gaussian or Student--t copula model to univariate count
+time series with discrete marginals (Poisson, negative binomial,
+binomial/beta–binomial, and zero–inflated variants) and latent
+dependence specified via ARMA correlation structures.
 }
 \details{
-The interface mirrors \code{glm()}. Zero–inflated marginals accept a list of
-formulas, for example \code{list(mu = y ~ x, pi0 = ~ z)}. Non–zero–inflated
-marginals accept a single formula (e.g., \code{y ~ x1 + x2}).
-
-\strong{Formula handling}
-For zero–inflated marginals:
+The high-dimensional rectangle probability defining the copula
+likelihood is approximated using one of:
 \itemize{
-\item If neither \code{mu} nor \code{pi0} is supplied, both default to
-intercept-only models (\code{mu ~ 1}, \code{pi0 ~ 1}).
-\item If \code{mu} is supplied but \code{pi0} is omitted,
-\code{pi0 ~ 1} is used.
+\item \strong{TMET} (Time Series Minimax Exponential Tilting),
+\item \strong{GHK} (Geweke--Hajivassiliou--Keane simulation), or
+\item \strong{CE} (Continuous Extension).
 }
 
-\strong{Dependence structure}
-ARMA parameters are determined by \code{cormat}.
+The interface mirrors \code{glm()}. Zero–inflated marginals accept a
+named list of formulas, e.g.,
+\code{list(mu = y ~ x, pi0 = ~ z)}. Non–zero–inflated marginals accept
+a single formula or \code{list(mu = ...)}.
+
+\strong{Formulas.}
+For zero–inflated marginals, if neither \code{mu} nor \code{pi0}
+is supplied, both default to intercept–only models
+(\code{mu ~ 1}, \code{pi0 ~ 1}). If \code{mu} is supplied but
+\code{pi0} is missing, \code{pi0 ~ 1} is used.
+
+\strong{Dependence.}
+The ARMA parameters are encoded in \code{cormat}. Models must
+satisfy stationarity and invertibility conditions.
 ARMA(0,0) is not supported.
 
-\strong{Method-specific notes}
-\itemize{
-\item CE ignores \code{QMC} and \code{options$M}.
-\item TMET and GHK require \code{options$M} to be a positive integer.
-\item TMET optionally uses \code{pm} when \eqn{q>0}.
-}
+\strong{Method-specific notes.}
+CE ignores \code{QMC} and \code{options$M}.
+GHK and TMET require \code{options$M} to be a positive integer.
+TMET additionally uses \code{pm} when \eqn{q > 0}.
 }
 \examples{
+## Example 1: Gaussian copula, Poisson marginal, AR(1)
 set.seed(42)
-n <- 200
-y <- sim_poisson(mu = 10, tau = 0.3, arma_order = c(1,0), nsim = n)$y
-fit <- gctsc(y ~ 1,
-  marginal = poisson.marg(lambda.lower = 0),
-  cormat = arma.cormat(p = 1, q = 0),
-  method = "CE",
-  options = gctsc.opts(M = 1000, seed = 42))
-summary(fit)
+n <- 500
+sim_dat <- sim_poisson(mu = 10, tau = 0.3, arma_order = c(1, 0),
+                       nsim = n, family = "gaussian")
 
+dat <- data.frame(y = sim_dat$y)
+
+fit_gauss <- gctsc(
+  y ~ 1,
+  data = dat,
+  marginal = poisson.marg(lambda.lower = 0),
+  cormat = arma.cormat(p = 1, q = 0), family = "gaussian",
+  method = "CE",
+  options = gctsc.opts(M = 1000, seed = 42)
+)
+summary(fit_gauss)
+
+## Example 2: Student--t copula
+sim_dat_t <- sim_poisson(mu = 10, tau = 0.3, arma_order = c(1, 0),
+                         nsim = 500, family = "t", df = 10)
+
+dat_t <- data.frame(y = sim_dat_t$y)
+
+fit_t <- gctsc(
+  y ~ 1,
+  data = dat_t,
+  marginal = poisson.marg(lambda.lower = 0),
+  cormat = arma.cormat(p = 1, q = 0), family ="t",
+  df= 10, method = "CE",
+  options = gctsc.opts(M = 1000, seed = 42)
+)
+summary(fit_t)
+
+}
+\references{
+Nguyen, Q. N., & De Oliveira, V. (2026). Likelihood Inference in Gaussian Copula Models for Count Time Series
+via Minimax Exponential Tilting
+\emph{Journal of Computational Statistics and Data Analysis}.
+
+Nguyen, Q. N., & De Oliveira, V. (2026).
+Scalable Likelihood Inference for Student--\eqn{t} Copula Count Time Series.
+Manuscript in preparation.
+
+Nguyen, Q. N., & De Oliveira, V. (2026).
+Approximating Gaussian copula models for count time series:
+Connecting the distributional transform and a continuous extension.
+\emph{Journal of Applied Statistics}.
 }
 \seealso{
 \code{\link{arma.cormat}}, \code{\link{poisson.marg}},

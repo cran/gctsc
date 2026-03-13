@@ -1,8 +1,8 @@
 ---
-title: "Gaussian Copula Time Series Models for Count Data"
+title: "Gaussian and Student t Copula Time Series Models for Count Data"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Gaussian Copula Time Series Models for Count Data}
+  %\VignetteIndexEntry{Gaussian and Student t Copula Time Series Models for Count Data}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -20,8 +20,9 @@ library(gctsc)
 set.seed(1)
 ```
 
+
 The `gctsc` package provides fast and scalable tools for fitting
-**Gaussian copula models for count time series**, supporting a wide range of discrete marginals:
+**Gaussian and Student t copula models for count time series**, supporting a wide range of discrete marginals:
 
 - Poisson  
 - Negative Binomial  
@@ -31,25 +32,14 @@ The `gctsc` package provides fast and scalable tools for fitting
 - Zero-Inflated Binomial (ZIB)  
 - Zero-Inflated Beta-Binomial (ZIBB)
 
-These models are constructed from a latent **Gaussian ARMA process**
-combined with a discrete marginal distribution. Likelihood evaluation
-requires the multivariate normal rectangle probability
+These models are constructed from a latent **ARMA process**
+combined with a discrete marginal distribution. Likelihood evaluation requires computing multivariate
+probabilities under Gaussian or Student–t dependence structures.
 
-\[
-P\big( a_t(y_t;\psi) \le Z_t \le b_t(y_t;\psi),\ t=1,\ldots,n \big),
-\]
-
-where \((Z_t)\) follows a Gaussian ARMA\((p,q)\) process with correlation matrix
-\(\Psi\), and the marginal-specific truncation bounds are
-
-\[
-a_t = \Phi^{-1}\!\big(F_t(y_t - 1;\psi)\big), \qquad 
-b_t = \Phi^{-1}\!\big(F_t(y_t;\psi)\big).
-\]
 
 The package provides several likelihood approximation methods:
 
-- **TMET** — Time Series Minimax Exponential Tilting (proposed method)  
+- **TMET** — Time Series Minimax Exponential Tilting  
 - **GHK** — Geweke–Hajivassiliou–Keane simulator  
 - **CE** — Continuous Extension approximation  
 
@@ -60,37 +50,106 @@ In addition, the package offers:
 - Residual diagnostic tools  
 - One-step-ahead prediction  
 
-The TMET method is an adaptation of minimax exponential tilting to
-**causal and invertible ARMA processes**, enabling fast, stable, and accurate
-likelihood computation even for large \(n\). The package also includes
-utilities for simulating count time series under various marginal models,
-fitting Gaussian copula models, performing diagnostics, and generating forecasts.
+A key feature of the package is the TMET method, which exploits the
+conditional structure of ARMA processes to compute likelihood
+approximations efficiently even for long time series. The package
+also includes the classical GHK simulator and the Continuous Extension
+approximation for comparison.
 
-This section illustrates basic usage of the `gctsc` package, including data simulation, 
-likelihood approximation, and model fitting under several margins.
+This vignette illustrates the main functionality of the `gctsc` package,
+including simulation, likelihood approximation, model fitting, diagnostics,
+and prediction for copula-based count time series models.
+
+
+## Installation
+
+The package can be installed from CRAN using
+
+```r
+install.packages("gctsc")
+```
+
+The development version is available at
+
+```r
+remotes::install_github("QNNHU/gctsc")
+```
+## Package overview
+
+The package provides tools for simulation, likelihood evaluation,
+estimation, diagnostics, and prediction for copula-based count time series
+models with Gaussian or Student–t copula dependence.
+
+The package implements several likelihood approximation methods, including
+Time Series Minimax Exponential Tilting (TMET), the classical
+Geweke–Hajivassiliou–Keane (GHK) simulator, and the Continuous Extension (CE)
+approximation.
+
+### Main functions
+
+| Function | Description |
+|--------|-------------|
+| `sim_*()` | Simulate copula count time series with latent ARMA dependence |
+| `pmvn_*()` / `pmvt_*()` | Compute multivariate rectangle probabilities for Gaussian and Student–t copulas |
+| `gctsc()` | Fit Gaussian or Student–t copula count time series models |
+| `predict()` | Compute one-step-ahead predictive distributions and moments |
+| `plot()` | Produce residual diagnostic plots |
+| `summary()` | Display parameter estimates and model fit statistics |
+
+The following sections illustrate the main functionality of the package,
+including simulation, likelihood approximation, model estimation,
+diagnostics, and prediction.
+
 
 ---
-### Example 1: Simulation of Count Data for Poisson marginal with AR(1) latent process:
+### Example 1: Simulating Poisson AR(1) counts under a Gaussian copula
 ```{r}
-library(gctsc)
-
-n  <- 100
+n  <- 300
 mu <- 10
 phi <- 0.2
 arma_order <- c(1, 0)
 tau <- c(phi)
 
-# Simulate Poisson count data
-sim_data <- sim_poisson(mu, tau, arma_order, nsim = n, seed = 7)
+sim_data <- sim_poisson(
+  mu = mu,
+  tau = tau,
+  arma_order = arma_order,
+  nsim = n,
+  family = "gaussian",
+  seed = 7
+)
+
 y <- sim_data$y
-
-plot(y, type = "l", main = "Simulated Poisson AR(1) Counts")
-
+plot(y, type = "l", main = "Simulated Poisson AR(1) Counts: Gaussian Copula")
 ```
 
-### Example 2: Simulating Zero–Inflated Beta–Binomial (ZIBB) AR(1) Count Time Series
+
+### Example 2: Simulating Poisson AR(1) counts under a Student–t copula
 ```{r}
-n <- 100
+n  <- 300
+mu <- 10
+phi <- 0.2
+arma_order <- c(1, 0)
+tau <- c(phi)
+
+sim_data <- sim_poisson(
+  mu = mu,
+  tau = tau,
+  arma_order = arma_order,
+  nsim = n,
+  family  = "t",
+  df = 5,
+  seed = 7
+)
+
+y <- sim_data$y
+plot(y, type = "l", main = "Simulated Poisson AR(1) Counts: t Copula")
+```
+
+
+### Example 3: Simulating Zero–Inflated Beta–Binomial (ZIBB) AR(1) Count Time Series
+```{r}
+n <- 300
 phi <- 0.5
 tau <- c(phi)
 
@@ -105,15 +164,16 @@ sim_data <- sim_zibb(prob = prob * rep(1,n),
                      rho = rho, pi0 = pi0,
                      size = size, tau = tau,
                      arma_order = c(1,0),
+                     family = "gaussian",
                      nsim = n)
 y <- sim_data$y
 
-plot(y, type = "l", main = "Simulated ZIBB AR(1) Counts")
+plot(y, type = "l", main = "Simulated ZIBB AR(1) Counts: gaussian Copula")
+
 
 ```
 
-### Example 3: Likelihood Approximation (TMET vs GHK)
-#### This example shows how to compute the Gaussian copula log-likelihood using the TMET and GHK methods.
+### Example 4: Likelihood approximation (TMET vs GHK vs CE)
 ```{r}
 n <- 300
 mu <- 10
@@ -128,50 +188,88 @@ y <- sim_data$y
 
 # Compute bounds for truncated MVN using marginal object
 marg <- poisson.marg()
-X    <- matrix(1, nrow = n)
-ab   <- marg$bounds(y, X, lambda = mu)
-lower <- ab[,1]
-upper <- ab[,2]
+lower <- qnorm(ppois(y - 1, lambda = mu))
+upper <- qnorm(ppois(y, lambda = mu))
 
 # Likelihood approximation
 llk_tmet <- pmvn_tmet(lower, upper, tau, od = arma_order, pm = 30, QMC = TRUE)
 llk_ghk  <- pmvn_ghk(lower, upper, tau, od = arma_order, QMC = TRUE)
+llk_ce  <- pmvn_ce(lower, upper, tau, od = arma_order)
 
-c(TMET = llk_tmet, GHK = llk_ghk)
+c(TMET = llk_tmet, GHK = llk_ghk, CE = llk_ce)
 
 ```
 
 ### Example 4: Fitting a Gaussian Copula Count Model
 
 ```{r}
+
+n <- 300
+mu <- 10
+phi <- 0.5
+theta <- 0.2
+arma_order <- c(1,1)
+tau <- c(phi, theta)
+
+# Simulate Poisson count data
+sim_data <- sim_poisson(mu, tau, arma_order, nsim = n, seed = 1, family ="gaussian")
+y <- sim_data$y
+
 fit <- gctsc(
   formula  = y ~ 1,
   marginal = poisson.marg(),
   cormat   = arma.cormat(p = 1, q = 1),
-  method   = "CE"
+  method   = "CE", family ="gaussian"
 )
 
 summary(fit)
 
-predict(fit)
 
 ```
 
 ### Example 5: Residual diagnostics
 ```{r}
+oldpar <- par(no.readonly = TRUE)
+
+par(mfrow = c(2,3))
 plot(fit)
+
+par(oldpar)
 ```
 
 
 ### Example 6: One-step-ahead prediction
 ```{r}
-pred_tmet <- predict(
+prediction <- predict(
   fit,
-  method  = "TMET",
   y_obs   = 10
 )
 
-pred_tmet
+prediction
+```
+
+### Example 7: Fitting a t Copula Count Model
+```{r}
+n <- 100
+mu <- 10
+phi <- 0.5
+theta <- 0.2
+arma_order <- c(1,1)
+tau <- c(phi, theta)
+
+# Simulate Poisson count data
+sim_data <- sim_poisson(mu, tau, arma_order, nsim = n, family = "t", df= 15, seed = 1)
+y <- sim_data$y
+
+fit <- gctsc(
+  formula  = y ~ 1,
+  marginal = poisson.marg(),
+  cormat   = arma.cormat(p = 1, q = 1),
+  method   = "CE", family ="t", df= 15
+)
+
+summary(fit)
+
 ```
 
 
@@ -226,7 +324,7 @@ fit <- gctsc(
   data     = data_train,
   marginal = negbin.marg(link = "log"),
   cormat   = arma.cormat(p = 1, q = 1),
-  method   = "CE",  ### method can be changed to TMET or GHK
+  method   = "CE", family ="gaussian",
   options  = gctsc.opts(seed = 1)   # fixed seed for reproducibility
 )
 
@@ -235,7 +333,12 @@ summary(fit)
 ## ---------------------------------------------------------------
 ## Residual diagnostics
 ## ---------------------------------------------------------------
+oldpar <- par(no.readonly = TRUE)
+on.exit(par(oldpar))   # restore user settings
+
+par(mfrow=c(2,3))
 plot(fit)
+
 
 ## ---------------------------------------------------------------
 ## One-step-ahead prediction

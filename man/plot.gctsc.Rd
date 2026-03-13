@@ -2,7 +2,7 @@
 % Please edit documentation in R/residuals.R
 \name{plot.gctsc}
 \alias{plot.gctsc}
-\title{Diagnostic Plots for Fitted Gaussian Copula Time Series Models}
+\title{Diagnostic Plots for Fitted Copula Count Time Series Models}
 \usage{
 \method{plot}{gctsc}(
   x,
@@ -14,39 +14,44 @@
 )
 }
 \arguments{
-\item{x}{An object of class \code{gctsc}, the result of a call to \code{\link{gctsc}}.}
+\item{x}{A fitted model object of class \code{"gctsc"}.}
 
-\item{caption}{Optional character vector of length 6 to use as captions for each plot.}
+\item{caption}{Optional character vector of length 5 providing captions
+for the plots.}
 
-\item{main}{Optional main title for the plots (recycled if shorter than the number of plots shown).}
+\item{main}{Optional main titles for the plots.}
 
-\item{level}{Confidence level for the Q--Q plot envelope (default is 0.95).}
+\item{level}{Confidence level for the Q--Q envelope (default 0.95).}
 
-\item{col.lines}{Color for reference lines in residual and ACF/PACF plots.}
+\item{col.lines}{Color used for reference lines.}
 
-\item{...}{Additional arguments passed to plotting functions.}
+\item{...}{Additional graphical arguments passed to plotting functions.}
 }
 \value{
+Invisibly returns \code{NULL}.
+
 This function is called for its side effects and returns \code{invisible()}.
 }
 \description{
-Produces a set of diagnostic plots based on randomized quantile residuals
-and PIT values for objects of class \code{gctsc}.
+Produces diagnostic plots for a fitted Gaussian or Student--t copula
+count time series model of class \code{"gctsc"}.
+
+The diagnostics are based on randomized quantile residuals and
+probability integral transform (PIT) values.
 }
 \details{
-The function displays up to five plots: time series of residuals, Q--Q plot,
-PIT histogram, and ACF/PACF plots of the residuals. These plots help assess
-model fit and potential misspecification.
-
-The five diagnostic plots shown are:
-
+The following diagnostic plots are produced:
 \enumerate{
-\item Time series plot of randomized quantile residuals.
-\item Q--Q plot comparing residuals to a standard normal distribution.
-\item Histogram of probability integral transform (PIT) values.
-\item Autocorrelation function (ACF) of the residuals.
-\item Partial autocorrelation function (PACF) of the residuals.
+\item Time series of randomized quantile residuals.
+\item Q--Q plot against the reference distribution.
+\item Histogram of PIT values.
+\item Autocorrelation function (ACF) of residuals.
+\item Partial autocorrelation function (PACF) of residuals.
 }
+
+For Gaussian copulas, residuals are compared against the standard
+normal distribution. For Student--t copulas, residuals are compared
+against a Student--t distribution with degrees of freedom obtained from fitted model.
 }
 \examples{
 # Simulate data from a Poisson AR(1) model
@@ -60,15 +65,18 @@ y <- sim_poisson(mu = mu, tau = phi, arma_order = arma_order, nsim = n)$y
 # Fit the model using the CE method
 fit <- gctsc(y~1,
   marginal = poisson.marg(link = "identity", lambda.lower = 0),
-  cormat = arma.cormat(p = 1, q = 0),
+  cormat = arma.cormat(p = 1, q = 0), family ="gaussian",
   method = "CE",
   options = gctsc.opts(seed = 1, M = 1000),
   c = 0.5
 )
 
 # Produce diagnostic plots
+par(mfrow = c(2, 3), ask = FALSE)
 plot(fit)
 }
 \seealso{
+\code{\link{residuals.gctsc}}
+
 \code{\link{residuals.gctsc}} for computing the residuals used in the plots.
 }

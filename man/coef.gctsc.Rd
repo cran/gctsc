@@ -12,8 +12,7 @@
 \item{...}{Ignored. Included for S3 method compatibility.}
 }
 \value{
-A named numeric vector containing the estimated model coefficients,
-including both marginal parameters and copula dependence parameters.
+A named numeric vector of model coefficients.
 }
 \description{
 Returns the estimated coefficients from a fitted \code{gctsc} model object.

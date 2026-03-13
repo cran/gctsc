@@ -13,10 +13,6 @@
 
 \item{...}{Ignored. Included for S3 method compatibility.}
 }
-\value{
-Returns the input object \code{x} invisibly.
-Called for its side effect of printing summary information.
-}
 \description{
 Displays summary statistics and model fit information for a fitted \code{gctsc} model.
 }

@@ -8,32 +8,36 @@ compute_cond_var <- function(gamma, model) {
 }
 
 #' @noRd
-CE_core_recursive <- function(gamma, model) {
-    .Call(`_gctsc_CE_core_recursive`, gamma, model)
-}
-
-#' Compute MVN rectangle probability via TMET
-#' @noRd
 ptmvn_tmet <- function(args) {
     .Call(`_gctsc_ptmvn_tmet`, args)
 }
 
-#' Compute MVN rectangle probability via GHK
 #' @noRd
 ptmvn_ghk <- function(args) {
     .Call(`_gctsc_ptmvn_ghk`, args)
 }
 
-#' Simulate conditional predictive distribution and compute residuals by GHK
-#' @noRd
-rtmvn_ghk <- function(args) {
-    .Call(`_gctsc_rtmvn_ghk`, args)
+ptmvt_tmet <- function(args) {
+    .Call(`_gctsc_ptmvt_tmet`, args)
 }
 
-#' Simulate conditional predictive distribution and compute residuals by TMET
+ptmvmn_ghk <- function(args) {
+    .Call(`_gctsc_ptmvmn_ghk`, args)
+}
+
 #' @noRd
-rtmvn_tmet <- function(args) {
-    .Call(`_gctsc_rtmvn_tmet`, args)
+ptmvt_ghk <- function(args) {
+    .Call(`_gctsc_ptmvt_ghk`, args)
+}
+
+#' @noRd
+ptmvn_ce <- function(gamma, model) {
+    .Call(`_gctsc_ptmvn_ce`, gamma, model)
+}
+
+#' @noRd
+ptmvt_ce <- function(gamma, model) {
+    .Call(`_gctsc_ptmvt_ce`, gamma, model)
 }
 
 #' Compute predictive distribution (internal TMET interface)
@@ -46,5 +50,21 @@ predmvn_ghk <- function(args, model) {
 #' @noRd
 predmvn_tmet <- function(args, model) {
     .Call(`_gctsc_predmvn_tmet`, args, model)
+}
+
+predmvt <- function(args, model) {
+    .Call(`_gctsc_predmvt`, args, model)
+}
+
+rtmvn_ghk <- function(args) {
+    .Call(`_gctsc_rtmvn_ghk`, args)
+}
+
+rtmvn_tmet <- function(args) {
+    .Call(`_gctsc_rtmvn_tmet`, args)
+}
+
+rtmvt <- function(args) {
+    .Call(`_gctsc_rtmvt`, args)
 }
 

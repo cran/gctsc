@@ -3,24 +3,25 @@
 ## -------------------------------
 
 ## --- Parameter setup ---
-n <- 500
+n <- 100
 mu <- 10
 phi <- 0.2
 arma_order <- c(1, 0)
 tau <- c(phi)
-
+family <- "gaussian"
 ## --- Simulate data ---
-
-sim_data <- sim_poisson(mu = mu * rep(1,n),
+set.seed(7)
+sim_data <- sim_poisson(mu = mu,
                         tau = tau,
                         arma_order = arma_order,
-                        nsim = n, seed= 7)
+                        family = "gaussian",
+                        nsim = n)
 y <- sim_data$y
 X <- matrix(1, nrow = n)
 
 ## --- Compute truncation bounds ---
 marg <- poisson.marg()
-ab <- marg$bounds(y, X, mu)
+ab <- marg$bounds(y, X, mu, family = family)
 
 ## --- Likelihood approximation ---
 llk_tmet <- pmvn_tmet(lower = ab[,1], upper = ab[,2],
@@ -39,11 +40,12 @@ fit_CE <- gctsc(
   marginal = poisson.marg(lambda.lower = 0),
   cormat   = arma.cormat(p = 1, q = 0),
   method   = "CE",
+  family   = "gaussian",
   QMC      = TRUE
 )
 
 plot(fit_CE)       # residual diagnostics
-predict(fit_CE, method ="GHK")    # one-step forecasting
+predict(fit_CE)    # one-step forecasting
 
 ## --- Fit Gaussian copula model using GHK ---
 fit_ghk <- gctsc(
@@ -51,8 +53,8 @@ fit_ghk <- gctsc(
   marginal = poisson.marg(lambda.lower = 0),
   cormat   = arma.cormat(p = 1, q = 0),
   method   = "GHK",
-  QMC      = TRUE, 
-  options = gctsc.opts(M = 1000, seed = 42)
+  family   = "gaussian",
+  QMC      = TRUE
 )
 
 plot(fit_ghk)
@@ -86,13 +88,13 @@ mu <- exp(X %*% beta)
 
 ## --- Simulate Poisson response ---
 sim_data <- sim_poisson(mu = mu, tau = tau,
-                        arma_order = arma_order,
+                        arma_order = arma_order, family   = "gaussian",
                         nsim = n, seed = 1)
 y <- sim_data$y
 
 ## --- Compute bounds and log-likelihood approximations ---
 marginal <- poisson.marg(link = "log")
-ab <- marginal$bounds(y, X, beta)
+ab <- marginal$bounds(y, X, beta, family   = "gaussian")
 
 llk_tmet_qmc <- pmvn_tmet(
   lower = ab[, 1],
@@ -109,10 +111,11 @@ fit <- gctsc(
   data     = data_train,
   marginal = poisson.marg(link = "log"),
   cormat   = arma.cormat(p = 1, q = 0),
+  family   = "gaussian",
   method   = "GHK",
   options  = gctsc.opts(seed = 1)
 )
 
 summary(fit)
 plot(fit)
-predict(fit, X_test = ( data_df[401,3:5]))
+predict(fit, X_test = ( data_df[401,3:5]), y_obs =  data_df[401,"Y"])

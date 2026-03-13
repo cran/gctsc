@@ -16,6 +16,13 @@ double norm_cdf(double z) {
   return v;
 }
 
+
+double norm_pdf(double z) {
+  static const double inv_sqrt_2pi = 0.3989422804014327; // 1/sqrt(2π)
+  return inv_sqrt_2pi * std::exp(-0.5 * z * z);
+}
+
+
 double norm_inv(double p) {
   double v;
   mvphnv_(&p, &v);
@@ -30,6 +37,11 @@ void norm_cdf_vec(int N, const double* z, double* v) {
 void norm_inv_vec(int N, const double* p, double* v) {
   for (int i = 0; i < N; ++i)
     mvphnv_((double*)(p + i), v + i);
+}
+
+double normalCDF(double x) // Phi(-∞, x) aka N(x)
+{
+  return std::erfc(-x / std::sqrt(2)) / 2;
 }
 
 

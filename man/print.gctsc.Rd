@@ -13,10 +13,6 @@
 
 \item{...}{Ignored. Included for S3 method compatibility.}
 }
-\value{
-Returns the object \code{x} invisibly.
-Called for its side effect of printing a formatted summary of the model fit.
-}
 \description{
 Displays the call, estimation method, parameter estimates, and likelihood information.
 }

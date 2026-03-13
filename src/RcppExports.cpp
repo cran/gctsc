@@ -23,18 +23,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// CE_core_recursive
-Rcpp::List CE_core_recursive(Rcpp::NumericVector gamma, Rcpp::List model);
-RcppExport SEXP _gctsc_CE_core_recursive(SEXP gammaSEXP, SEXP modelSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type gamma(gammaSEXP);
-    Rcpp::traits::input_parameter< Rcpp::List >::type model(modelSEXP);
-    rcpp_result_gen = Rcpp::wrap(CE_core_recursive(gamma, model));
-    return rcpp_result_gen;
-END_RCPP
-}
 // ptmvn_tmet
 List ptmvn_tmet(List args);
 RcppExport SEXP _gctsc_ptmvn_tmet(SEXP argsSEXP) {
@@ -57,25 +45,60 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// rtmvn_ghk
-List rtmvn_ghk(List args);
-RcppExport SEXP _gctsc_rtmvn_ghk(SEXP argsSEXP) {
+// ptmvt_tmet
+List ptmvt_tmet(List args);
+RcppExport SEXP _gctsc_ptmvt_tmet(SEXP argsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< List >::type args(argsSEXP);
-    rcpp_result_gen = Rcpp::wrap(rtmvn_ghk(args));
+    rcpp_result_gen = Rcpp::wrap(ptmvt_tmet(args));
     return rcpp_result_gen;
 END_RCPP
 }
-// rtmvn_tmet
-List rtmvn_tmet(List args);
-RcppExport SEXP _gctsc_rtmvn_tmet(SEXP argsSEXP) {
+// ptmvmn_ghk
+List ptmvmn_ghk(List args);
+RcppExport SEXP _gctsc_ptmvmn_ghk(SEXP argsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< List >::type args(argsSEXP);
-    rcpp_result_gen = Rcpp::wrap(rtmvn_tmet(args));
+    rcpp_result_gen = Rcpp::wrap(ptmvmn_ghk(args));
+    return rcpp_result_gen;
+END_RCPP
+}
+// ptmvt_ghk
+List ptmvt_ghk(List args);
+RcppExport SEXP _gctsc_ptmvt_ghk(SEXP argsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type args(argsSEXP);
+    rcpp_result_gen = Rcpp::wrap(ptmvt_ghk(args));
+    return rcpp_result_gen;
+END_RCPP
+}
+// ptmvn_ce
+Rcpp::List ptmvn_ce(Rcpp::NumericVector gamma, Rcpp::List model);
+RcppExport SEXP _gctsc_ptmvn_ce(SEXP gammaSEXP, SEXP modelSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type gamma(gammaSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type model(modelSEXP);
+    rcpp_result_gen = Rcpp::wrap(ptmvn_ce(gamma, model));
+    return rcpp_result_gen;
+END_RCPP
+}
+// ptmvt_ce
+Rcpp::List ptmvt_ce(Rcpp::NumericVector gamma, Rcpp::List model);
+RcppExport SEXP _gctsc_ptmvt_ce(SEXP gammaSEXP, SEXP modelSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type gamma(gammaSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type model(modelSEXP);
+    rcpp_result_gen = Rcpp::wrap(ptmvt_ce(gamma, model));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -103,16 +126,67 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// predmvt
+List predmvt(List args, List model);
+RcppExport SEXP _gctsc_predmvt(SEXP argsSEXP, SEXP modelSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type args(argsSEXP);
+    Rcpp::traits::input_parameter< List >::type model(modelSEXP);
+    rcpp_result_gen = Rcpp::wrap(predmvt(args, model));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rtmvn_ghk
+List rtmvn_ghk(List args);
+RcppExport SEXP _gctsc_rtmvn_ghk(SEXP argsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type args(argsSEXP);
+    rcpp_result_gen = Rcpp::wrap(rtmvn_ghk(args));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rtmvn_tmet
+List rtmvn_tmet(List args);
+RcppExport SEXP _gctsc_rtmvn_tmet(SEXP argsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type args(argsSEXP);
+    rcpp_result_gen = Rcpp::wrap(rtmvn_tmet(args));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rtmvt
+List rtmvt(List args);
+RcppExport SEXP _gctsc_rtmvt(SEXP argsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type args(argsSEXP);
+    rcpp_result_gen = Rcpp::wrap(rtmvt(args));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_gctsc_compute_cond_var", (DL_FUNC) &_gctsc_compute_cond_var, 2},
-    {"_gctsc_CE_core_recursive", (DL_FUNC) &_gctsc_CE_core_recursive, 2},
     {"_gctsc_ptmvn_tmet", (DL_FUNC) &_gctsc_ptmvn_tmet, 1},
     {"_gctsc_ptmvn_ghk", (DL_FUNC) &_gctsc_ptmvn_ghk, 1},
-    {"_gctsc_rtmvn_ghk", (DL_FUNC) &_gctsc_rtmvn_ghk, 1},
-    {"_gctsc_rtmvn_tmet", (DL_FUNC) &_gctsc_rtmvn_tmet, 1},
+    {"_gctsc_ptmvt_tmet", (DL_FUNC) &_gctsc_ptmvt_tmet, 1},
+    {"_gctsc_ptmvmn_ghk", (DL_FUNC) &_gctsc_ptmvmn_ghk, 1},
+    {"_gctsc_ptmvt_ghk", (DL_FUNC) &_gctsc_ptmvt_ghk, 1},
+    {"_gctsc_ptmvn_ce", (DL_FUNC) &_gctsc_ptmvn_ce, 2},
+    {"_gctsc_ptmvt_ce", (DL_FUNC) &_gctsc_ptmvt_ce, 2},
     {"_gctsc_predmvn_ghk", (DL_FUNC) &_gctsc_predmvn_ghk, 2},
     {"_gctsc_predmvn_tmet", (DL_FUNC) &_gctsc_predmvn_tmet, 2},
+    {"_gctsc_predmvt", (DL_FUNC) &_gctsc_predmvt, 2},
+    {"_gctsc_rtmvn_ghk", (DL_FUNC) &_gctsc_rtmvn_ghk, 1},
+    {"_gctsc_rtmvn_tmet", (DL_FUNC) &_gctsc_rtmvn_tmet, 1},
+    {"_gctsc_rtmvt", (DL_FUNC) &_gctsc_rtmvt, 1},
     {NULL, NULL, 0}
 };
 

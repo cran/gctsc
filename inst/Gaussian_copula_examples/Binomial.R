@@ -34,6 +34,7 @@ sim_data <- sim_binom(
   size       = size,
   tau        = tau,
   arma_order = arma_order,
+  family = "gaussian",
   nsim       = n
 )
 y <- sim_data$y
@@ -42,7 +43,7 @@ y <- sim_data$y
 fit_binom <- gctsc(
   formula  = y ~ 1,
   marginal = binom.marg(link = "logit", size = size),
-  cormat   = arma.cormat(p = 1, q = 0),
+  cormat   = arma.cormat(p = 1, q = 0),family = "gaussian",
   method   = "TMET",
   options  = gctsc.opts(seed = 1, M = 1000)
 )

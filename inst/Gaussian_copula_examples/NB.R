@@ -6,7 +6,7 @@
 n <- 500
 mu <- 1
 phi <- 0.5
-theta <- 0.8
+theta <- 0.2
 arma_order <- c(1, 1)
 tau <- c(phi,theta)
 dispersion <- 2
@@ -15,18 +15,18 @@ dispersion <- 2
 set.seed(7)
 sim_data <- sim_negbin(mu = mu * rep(1,n), dispersion,
                         tau = tau,
-                        arma_order = arma_order,
+                        arma_order = arma_order, family ="gaussian",
                         nsim = n)
 y <- sim_data$y
 X <- matrix(1, nrow = n)
 
 ## --- Compute truncation bounds ---
 marg <- negbin.marg()
-ab <- marg$bounds(y, X, c(mu,dispersion))
+ab <- marg$bounds(y, X, c(mu,dispersion),family ="gaussian")
 
 ## --- Likelihood approximation ---
 llk_tmet <- pmvn_tmet(lower = ab[,1], upper = ab[,2],
-                      tau = tau, od = arma_order,
+                      tau = tau, od = arma_order, 
                       pm = 30, QMC = TRUE)
 
 llk_ghk  <- pmvn_ghk( lower = ab[,1], upper = ab[,2],
@@ -41,8 +41,8 @@ fit_tmet <- gctsc(
   marginal = negbin.marg(lambda.lower = c(0,0)),
   cormat   = arma.cormat(p = 1, q = 1),
   method   = "TMET",
-  QMC      = TRUE,
-  options = gctsc.opts(M = 1000, seed = 42)
+  family = "gaussian",
+  QMC      = TRUE
 )
 summary(fit_tmet)
 plot(fit_tmet)       # residual diagnostics
@@ -54,8 +54,8 @@ fit_ghk <- gctsc(
   marginal = negbin.marg(lambda.lower = c(0,0)),
   cormat   = arma.cormat(p = 1, q = 1),
   method   = "GHK",
-  QMC      = TRUE,
-  options = gctsc.opts(M = 1000, seed = 42)
+  family = "gaussian",
+  QMC      = TRUE
 )
 
 plot(fit_ghk)
@@ -68,7 +68,7 @@ plot(fit_ghk)
 
 library(gctsc)
 
-n <- 300
+n <- 500
 phi <- 0.5
 tau <- c(phi)
 arma_order <- c(1, 0)
@@ -104,6 +104,7 @@ sim_data <- sim_negbin(
   tau       = tau,
   arma_order = arma_order,
   nsim      = n,
+  family = "gaussian",
   seed      = 10
 )
 y <- sim_data$y
@@ -118,6 +119,7 @@ fit_nb <- gctsc(
   marginal = negbin.marg(link = "log"),
   cormat   = arma.cormat(p = 1, q = 0),
   method   = "GHK",
+  family = "gaussian",
   options  = gctsc.opts(seed = 1, M = 1000)
 )
 

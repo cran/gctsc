@@ -1,4 +1,4 @@
-#include <RcppArmadillo.h>
+#include <Rcpp.h>
 using namespace Rcpp;
 
 //' @name compute_cond_var
@@ -13,7 +13,8 @@ List compute_cond_var(NumericVector gamma, List model) {
   int m = model["m"];
   double sigma2 = model["sigma2"];
   NumericVector v(n);
-  NumericMatrix Theta(n+1, q+1);
+  // NumericMatrix Theta(n+1, q+1);
+  NumericMatrix Theta(n+1, m+1);
 
   auto kappa = [&](int i, int j) {
     if (j > m) {

@@ -1,11 +1,9 @@
-#ifndef lnNpr_HPP
-#define lnNpr_HPP
-#include "gauss_utils.h"
-#include "sampling_utils.h"
+#ifndef lnNpr_H
+#define lnNpr_H
 #include <Rmath.h>   // for R::pnorm
 #include <cmath>
 #include <stdexcept>
-#include <RcppArmadillo.h>
+#include <armadillo>
 
 // scalar version
 inline double lnNpr(double a, double b) {
@@ -34,6 +32,7 @@ inline double lnNpr(double a, double b) {
     return std::log1p(-pa - pb);
   }
 }
+
 
 
 // vectorized wrapper

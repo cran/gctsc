@@ -10,23 +10,46 @@ library(gctsc)
 set.seed(1)
 
 ## -----------------------------------------------------------------------------
-library(gctsc)
-
-n  <- 100
+n  <- 300
 mu <- 10
 phi <- 0.2
 arma_order <- c(1, 0)
 tau <- c(phi)
 
-# Simulate Poisson count data
-sim_data <- sim_poisson(mu, tau, arma_order, nsim = n, seed = 7)
+sim_data <- sim_poisson(
+  mu = mu,
+  tau = tau,
+  arma_order = arma_order,
+  nsim = n,
+  family = "gaussian",
+  seed = 7
+)
+
 y <- sim_data$y
-
-plot(y, type = "l", main = "Simulated Poisson AR(1) Counts")
-
+plot(y, type = "l", main = "Simulated Poisson AR(1) Counts: Gaussian Copula")
 
 ## -----------------------------------------------------------------------------
-n <- 100
+n  <- 300
+mu <- 10
+phi <- 0.2
+arma_order <- c(1, 0)
+tau <- c(phi)
+
+sim_data <- sim_poisson(
+  mu = mu,
+  tau = tau,
+  arma_order = arma_order,
+  nsim = n,
+  family  = "t",
+  df = 5,
+  seed = 7
+)
+
+y <- sim_data$y
+plot(y, type = "l", main = "Simulated Poisson AR(1) Counts: t Copula")
+
+## -----------------------------------------------------------------------------
+n <- 300
 phi <- 0.5
 tau <- c(phi)
 
@@ -41,10 +64,12 @@ sim_data <- sim_zibb(prob = prob * rep(1,n),
                      rho = rho, pi0 = pi0,
                      size = size, tau = tau,
                      arma_order = c(1,0),
+                     family = "gaussian",
                      nsim = n)
 y <- sim_data$y
 
-plot(y, type = "l", main = "Simulated ZIBB AR(1) Counts")
+plot(y, type = "l", main = "Simulated ZIBB AR(1) Counts: gaussian Copula")
+
 
 
 ## -----------------------------------------------------------------------------
@@ -61,42 +86,78 @@ y <- sim_data$y
 
 # Compute bounds for truncated MVN using marginal object
 marg <- poisson.marg()
-X    <- matrix(1, nrow = n)
-ab   <- marg$bounds(y, X, lambda = mu)
-lower <- ab[,1]
-upper <- ab[,2]
+lower <- qnorm(ppois(y - 1, lambda = mu))
+upper <- qnorm(ppois(y, lambda = mu))
 
 # Likelihood approximation
 llk_tmet <- pmvn_tmet(lower, upper, tau, od = arma_order, pm = 30, QMC = TRUE)
 llk_ghk  <- pmvn_ghk(lower, upper, tau, od = arma_order, QMC = TRUE)
+llk_ce  <- pmvn_ce(lower, upper, tau, od = arma_order)
 
-c(TMET = llk_tmet, GHK = llk_ghk)
+c(TMET = llk_tmet, GHK = llk_ghk, CE = llk_ce)
 
 
 ## -----------------------------------------------------------------------------
+
+n <- 300
+mu <- 10
+phi <- 0.5
+theta <- 0.2
+arma_order <- c(1,1)
+tau <- c(phi, theta)
+
+# Simulate Poisson count data
+sim_data <- sim_poisson(mu, tau, arma_order, nsim = n, seed = 1, family ="gaussian")
+y <- sim_data$y
+
 fit <- gctsc(
   formula  = y ~ 1,
   marginal = poisson.marg(),
   cormat   = arma.cormat(p = 1, q = 1),
-  method   = "CE"
+  method   = "CE", family ="gaussian"
 )
 
 summary(fit)
 
-predict(fit)
 
 
 ## -----------------------------------------------------------------------------
+oldpar <- par(no.readonly = TRUE)
+
+par(mfrow = c(2,3))
 plot(fit)
 
+par(oldpar)
+
 ## -----------------------------------------------------------------------------
-pred_tmet <- predict(
+prediction <- predict(
   fit,
-  method  = "TMET",
   y_obs   = 10
 )
 
-pred_tmet
+prediction
+
+## -----------------------------------------------------------------------------
+n <- 100
+mu <- 10
+phi <- 0.5
+theta <- 0.2
+arma_order <- c(1,1)
+tau <- c(phi, theta)
+
+# Simulate Poisson count data
+sim_data <- sim_poisson(mu, tau, arma_order, nsim = n, family = "t", df= 15, seed = 1)
+y <- sim_data$y
+
+fit <- gctsc(
+  formula  = y ~ 1,
+  marginal = poisson.marg(),
+  cormat   = arma.cormat(p = 1, q = 1),
+  method   = "CE", family ="t", df= 15
+)
+
+summary(fit)
+
 
 ## -----------------------------------------------------------------------------
 ## Load weekly Campylobacter incidence data
@@ -147,7 +208,7 @@ fit <- gctsc(
   data     = data_train,
   marginal = negbin.marg(link = "log"),
   cormat   = arma.cormat(p = 1, q = 1),
-  method   = "CE",  ### method can be changed to TMET or GHK
+  method   = "CE", family ="gaussian",
   options  = gctsc.opts(seed = 1)   # fixed seed for reproducibility
 )
 
@@ -156,7 +217,12 @@ summary(fit)
 ## ---------------------------------------------------------------
 ## Residual diagnostics
 ## ---------------------------------------------------------------
+oldpar <- par(no.readonly = TRUE)
+on.exit(par(oldpar))   # restore user settings
+
+par(mfrow=c(2,3))
 plot(fit)
+
 
 ## ---------------------------------------------------------------
 ## One-step-ahead prediction
