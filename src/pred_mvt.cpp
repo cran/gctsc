@@ -103,8 +103,11 @@ List predmvt( List args,
   // Initialization
   v[0] = kappa(1, 1); // Remember: v[0] corresponds to R's v[1]
   condSd[0] = sqrt(v[0]*sigma2);
+  std::fill(mu_all, mu_all + (n + 1) * M, 0.0);
+  std::fill(V, V + n * M, 0.0);
   // Main loop
   for(int i = 0; i < n; i++) {
+    if(i >0 ){
     if (i < m) {
       for (int ki = 0; ki < i; ++ki) {
         double s_values = 0.0;
@@ -139,7 +142,7 @@ List predmvt( List args,
       }
       v[i ] = kappa(i + 1, i + 1) - sum_v;
     }
-
+    }
     condSd[i] = sqrt(v[i] * sigma2);
 
 

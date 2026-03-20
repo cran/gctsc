@@ -72,7 +72,7 @@ fit <- gctsc(y~1,
 )
 
 # Produce diagnostic plots
-par(mfrow = c(2, 3), ask = FALSE)
+par(mfrow = c(2, 3))
 plot(fit)
 }
 \seealso{

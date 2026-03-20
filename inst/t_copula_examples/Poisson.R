@@ -41,7 +41,7 @@ fit_CE <- gctsc(
   formula = y ~ 1,
   marginal = poisson.marg(lambda.lower = 0),
   cormat   = arma.cormat(p = 1, q = 0),
-  method   = "GHK",
+  method   = "CE",
   family   = "t",
   df= 15,
   QMC      = TRUE

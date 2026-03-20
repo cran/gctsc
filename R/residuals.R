@@ -189,7 +189,7 @@ residuals.gctsc <- function(object, ...) {
 #' )
 #'
 #' # Produce diagnostic plots
-#' par(mfrow = c(2, 3), ask = FALSE)
+#' par(mfrow = c(2, 3))
 #' plot(fit)
 
 #' @seealso \code{\link{residuals.gctsc}} for computing the residuals used in the plots.

@@ -1,6 +1,6 @@
 Package: gctsc
 Title: Gaussian and Student-t Copula Models for Count Time Series
-Version: 0.2.0
+Version: 0.2.3
 Authors@R: 
     c(person("Quynh", "Nguyen", role = c("aut", "cre"),
              email = "nqnhu2209@gmail.com"),
@@ -26,14 +26,14 @@ BugReports: https://github.com/QNNHU/gctsc/issues
 Encoding: UTF-8
 VignetteBuilder: knitr
 RoxygenNote: 7.3.3
-Suggests: knitr, rmarkdown, VeccTMVN, gcmr, testthat (>= 3.0.0)
+Suggests: knitr, rmarkdown, testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Depends: R (>= 3.5)
 LazyData: false
 NeedsCompilation: yes
-Packaged: 2026-03-12 21:46:18 UTC; Nhu
+Packaged: 2026-03-20 04:28:38 UTC; Nhu
 Author: Quynh Nguyen [aut, cre],
   Victor De Oliveira [aut]
 Maintainer: Quynh Nguyen <nqnhu2209@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-03-13 07:00:14 UTC
+Date/Publication: 2026-03-20 06:10:31 UTC
